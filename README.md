@@ -1,5 +1,5 @@
 # ME
-
+  <img src="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExdnA0NGl6NXZuZnV2NDQ5NmJ4dHdwMWpqYnlsNXBrMjJlb2luZTZyeiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/MCZ39lz83o5lC/giphy.gif" alt="logo" width="400" height="auto" />
 Sistema de memoria personal con IA local. CRUD de memorias, búsqueda full-text, esfera 3D reactiva a música, y chat con LLM.
 
 ---
