@@ -12,7 +12,7 @@
 
 ---
 
-## El nombre
+## ✦ El nombre
 
 En sumerio antiguo, **me** 𒈨 son los decretos divinos que definen qué es la civilización — la escritura, la sabiduría, el arte, la verdad. No reglas, sino propiedades fundamentales de la existencia. Lo que hace que algo *sea* lo que es.
 
@@ -22,20 +22,22 @@ La memoria vive en **Šà** 𒊮 — *corazón* en sumerio. El núcleo del siste
 
 ---
 
-## Qué es
+## ◈ Qué es
 
 ME no es una app de notas. Es un agente con memoria persistente — sabe quién eres, cómo piensas, qué estás construyendo. Aprende de cada conversación y evoluciona contigo.
 
 La memoria opera en dos capas:
 
 - **CAG** — contexto estático que el agente lee al inicio de cada sesión: tu perfil, su identidad, cómo se relacionan
-- **RAG** — búsqueda full-text sobre todo lo guardado en Šà: tareas, reflexiones, aprendizajes, notas de sesión
+- **RAG** — búsqueda full-text sobre todo lo guardado en Šà 𒊮: tareas, reflexiones, aprendizajes, notas de sesión
 
 La interfaz es secundaria. El flujo principal es **opencode o Claude + Obsidian + Šà via MCP**.
 
 ---
 
-## Antes de instalar
+## ⚙️ Antes de instalar
+
+*Antes de invocar a los dioses, necesitas las herramientas correctas.*
 
 | Herramienta | Para qué | Instalador |
 |-------------|----------|------------|
@@ -44,43 +46,51 @@ La interfaz es secundaria. El flujo principal es **opencode o Claude + Obsidian 
 | gcc / TDM-GCC | SQLite con Go (CGO) | https://jmeubank.github.io/tdm-gcc/ |
 | Git | clonar el repo | https://git-scm.com/ |
 
-**Windows:** descarga el `.msi` de Go y Node.js, ejecuta, cierra y abre la terminal.  
-**gcc:** TDM-GCC es el más sencillo en Windows — instala y reinicia.
+**Windows:** descarga el `.msi` de Go y Node.js, ejecútalos, cierra la terminal y vuelve a abrirla. Sí, hay que cerrarla. No, no funciona sin cerrarla.
 
-Verifica antes de continuar:
+**gcc:** TDM-GCC es el más sencillo en Windows — instala y reinicia. Sin esto SQLite no compila y el backend no existe.
+
+Cuando tengas todo, verifica:
 ```bash
 go version && node --version && npm --version && gcc --version
 ```
 
+Si algo falla aquí, no sigas. El sistema te lo agradecerá.
+
 ---
 
-## Instalación
+## 🚀 Instalación
+
+*Cuatro comandos. Prometido.*
 
 ```bash
-# clona
+# el inicio de todo
 git clone https://github.com/4v41on/ME.git
 cd ME
 
-# verifica dependencias + crea .env + instala módulos
+# verifica dependencias, crea .env, instala módulos Go y npm
 make setup
 
-# compila el servidor MCP — una sola vez
+# compila el servidor MCP — solo tienes que hacer esto una vez
 make build-mcp
 
-# levanta todo
+# enciende todo
 make run
 ```
 
-Abre **http://localhost:3000**
+Abre **http://localhost:3000** y empieza.
 
 ---
 
-## Primera vez
+## 🌱 Primera vez
 
-Al abrir el browser aparece el onboarding:
+El sistema te recibe con el onboarding. No es un formulario — es la primera conversación.
 
-1. **Nombras a tu agente** — el nombre que usará en cada sesión
-2. **Eliges un arquetipo** — la personalidad semilla desde la que empieza a crecer
+**Paso 1 — Le das un nombre a tu agente.**
+El nombre que elijas es el que usará en cada sesión. Tómatelo en serio o no, pero ya no se puede cambiar sin tocar la base de datos. Lo decimos con cariño.
+
+**Paso 2 — Eliges un arquetipo.**
+La personalidad semilla. No es definitiva — el agente crece desde ahí via CAG + RAG. Pero define desde dónde empieza a hablar.
 
 | Arquetipo | Modo |
 |-----------|------|
@@ -91,15 +101,20 @@ Al abrir el browser aparece el onboarding:
 | Enki | sistemas y construcción |
 | Zeus | decisión y ejecución |
 
-3. **13 preguntas** — quién eres, cómo funcionas, cómo quieres que te hablen
+*Enki, por cierto, era el guardián de los me 𒈨 en la mitología sumeria. Ishtar fue quien los obtuvo. El círculo es intencional.*
 
-Al terminar, el sistema genera `vault/` con tres archivos: el perfil del agente, el tuyo, y el protocolo de relación entre los dos. Esos archivos van a tu Obsidian — son el contexto estático que el agente lee en cada sesión.
+**Paso 3 — 13 preguntas.**
+Quién eres, cómo funcionas, cómo quieres que te hablen. Sin trampa, sin truco — el sistema usa exactamente lo que respondes.
+
+Al terminar, `vault/` aparece con tres archivos: el perfil del agente, el tuyo, y el protocolo de relación entre los dos. Esos archivos van a tu Obsidian — son el contexto estático que el agente lee en cada sesión sin que tengas que repetirle nada.
 
 ---
 
-## Conectar el MCP
+## 🔌 Conectar el MCP
 
-El flujo principal no es el browser — es opencode o Claude Code conectado al MCP.
+*Aquí es donde el sistema cobra vida de verdad.*
+
+El flujo principal no es el browser — es opencode o Claude Code con el MCP activo. El browser es el dashboard. El MCP es el sistema nervioso.
 
 Crea o edita tu `.mcp.json`:
 
@@ -118,16 +133,20 @@ Crea o edita tu `.mcp.json`:
 }
 ```
 
-En la primera sesión escribe `abrakadabra`. El agente carga todo el contexto y, si es la primera vez, inicia el onboarding conversacional — profundiza lo que el formulario no captura y reescribe el vault con voz real.
+En la primera sesión escribe `abrakadabra`.
+
+El agente carga el contexto completo — ME-Init.md, vault, perfil — y si es la primera vez, inicia el onboarding conversacional: profundiza lo que el formulario no puede capturar y reescribe el vault con voz real. A partir de ahí, `abrakadabra` solo activa la sesión.
 
 ---
 
-## Ollama — LLM local (opcional)
+## 🤖 Ollama — LLM local (opcional)
 
-El sistema funciona completo sin Ollama. Las memorias, la búsqueda, la esfera y el onboarding no dependen de él.
+El sistema funciona completo sin Ollama. Las memorias, la búsqueda, la esfera y el onboarding no lo necesitan.
+
+Si tu máquina lo aguanta:
 
 ```bash
-# instala desde https://ollama.ai
+# https://ollama.ai
 ollama pull mistral
 
 # activa en .env
@@ -141,9 +160,11 @@ OLLAMA_MODEL=mistral
 | 16 GB | `mistral`, `llama3.2` |
 | 32 GB+ | `llama3.1:8b`, `qwen2.5:7b` |
 
+Si no tienes Ollama configurado, el tab de chat muestra instrucciones en lugar de un error vacío. No todo el mundo tiene un servidor de modelos en casa — y está bien.
+
 ---
 
-## Comandos
+## 🛠 Comandos
 
 ```bash
 make setup      # primera vez: verifica deps + crea .env + instala
@@ -151,17 +172,17 @@ make build-mcp  # compila el servidor MCP (una sola vez)
 make run        # backend + frontend en paralelo
 make build      # compila todo para producción
 make clean      # elimina artefactos (no toca la DB)
-make clean-db   # elimina la base de datos — BORRA TODOS LOS DATOS
+make clean-db   # elimina la base de datos — BORRA TODO, sin preguntar
 ```
 
 ---
 
-## Variables de entorno
+## ⚙️ Variables de entorno
 
 | Variable | Default | Descripción |
 |----------|---------|-------------|
 | `ME_PORT` | `8082` | Puerto del backend |
-| `ME_DB_PATH` | `./me.db` | Base de datos SQLite — Šà |
+| `ME_DB_PATH` | `./me.db` | Base de datos SQLite — Šà 𒊮 |
 | `ME_VAULT_PATH` | `./vault` | Directorio del vault CAG |
 | `ME_INIT_PATH` | `./ME-Init.md` | Init file para el MCP |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8082` | URL del backend desde el browser |
@@ -170,7 +191,7 @@ make clean-db   # elimina la base de datos — BORRA TODOS LOS DATOS
 
 ---
 
-## Estructura
+## 📁 Estructura
 
 ```
 ME/
