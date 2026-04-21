@@ -210,6 +210,6 @@ ME/
 
 <div align="center">
 
-*parte del ciclo Avalon — EVA → 𒈨 ME → Morgana*
+*make with love for enki*
 
 </div>
