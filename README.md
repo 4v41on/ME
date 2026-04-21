@@ -1,23 +1,45 @@
+<div align="center">
+
+<img src="docs/tio-ben.gif" alt="ME" width="100%"/>
+
 # ME
-  <img src="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExdnA0NGl6NXZuZnV2NDQ5NmJ4dHdwMWpqYnlsNXBrMjJlb2luZTZyeiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/MCZ39lz83o5lC/giphy.gif" alt="logo" width="400" height="auto" />
-Sistema de memoria personal con IA local. CRUD de memorias, búsqueda full-text, esfera 3D reactiva a música, y chat con LLM.
+
+*un sistema de memoria personal que crece contigo*
+
+**Go + SQLite/FTS5 · Next.js · EvaSphere · MCP**
+
+</div>
 
 ---
 
-## Requisitos
+## Qué es
 
-| Requisito | Obligatorio | Dónde instalarlo |
-|-----------|-------------|-----------------|
-| Go 1.21+ | ✅ | https://go.dev/dl/ |
-| Node.js 18+ (LTS) | ✅ | https://nodejs.org/ |
-| gcc / MinGW | ✅ | https://jmeubank.github.io/tdm-gcc/ |
-| Git | ✅ | https://git-scm.com/ |
-| Ollama | ❌ opcional | https://ollama.ai — solo para chat con LLM |
+ME no es una app de notas. Es un agente con memoria persistente — sabe quién eres, cómo piensas, qué estás construyendo. Aprende de cada conversación y evoluciona contigo.
 
-**Windows:** descarga el instalador `.msi` de Go y Node.js, ejecuta, cierra y abre la terminal.  
-**gcc:** instala TDM-GCC (link de arriba), es necesario para compilar SQLite con Go.
+La memoria vive en dos capas:
 
-Verifica que todo esté instalado:
+- **CAG** — contexto estático que el agente lee al inicio de cada sesión: tu perfil, su identidad, cómo se relacionan
+- **RAG** — búsqueda full-text sobre todo lo que se ha guardado: tareas, reflexiones, aprendizajes, notas de sesión
+
+La interfaz es secundaria. El flujo principal es **opencode o Claude + Obsidian como contexto + Šà via MCP**.
+
+---
+
+## Antes de instalar
+
+Necesitas estas herramientas en tu máquina:
+
+| Herramienta | Para qué | Instalador |
+|-------------|----------|------------|
+| Go 1.21+ | backend + MCP | https://go.dev/dl/ |
+| Node.js 18+ LTS | frontend | https://nodejs.org/ |
+| gcc / TDM-GCC | SQLite con Go (CGO) | https://jmeubank.github.io/tdm-gcc/ |
+| Git | clonar el repo | https://git-scm.com/ |
+
+**Windows:** descarga el `.msi` de Go y Node.js, ejecuta, cierra y abre la terminal.  
+**gcc:** TDM-GCC es el más sencillo en Windows — instala y reinicia.
+
+Verifica todo antes de continuar:
 ```bash
 go version && node --version && npm --version && gcc --version
 ```
@@ -27,89 +49,118 @@ go version && node --version && npm --version && gcc --version
 ## Instalación
 
 ```bash
-# 1. Clonar
+# clona
 git clone https://github.com/4v41on/ME.git
 cd ME
 
-# 2. Verificar dependencias + crear .env + instalar módulos
+# verifica dependencias + crea .env + instala módulos Go y npm
 make setup
 
-# 3. Compilar el servidor MCP (una sola vez)
+# compila el servidor MCP — una sola vez
 make build-mcp
 
-# 4. Ejecutar
+# levanta todo
 make run
 ```
 
-Abre [http://localhost:3000](http://localhost:3000).
+Abre **http://localhost:3000**
 
-La primera vez aparece el onboarding — nombras tu IA y respondes 13 preguntas. El sistema usa ese perfil en cada conversación.
+---
+
+## Primera vez
+
+Al abrir el browser aparece el onboarding:
+
+1. **Nombras a tu agente** — el nombre que usará en cada sesión
+2. **Eliges un arquetipo** — la personalidad semilla desde la que empieza a crecer
+
+| Arquetipo | Modo |
+|-----------|------|
+| Athena | estrategia y claridad |
+| Hermes | conexiones y velocidad |
+| Metis | profundidad antes que respuesta |
+| Ishtar | directa, sin rodeos |
+| Enki | sistemas y construcción |
+| Zeus | decisión y ejecución |
+
+3. **13 preguntas** — quién eres, cómo funciones, cómo quieres que te hablen
+
+Al terminar el sistema genera `vault/` con tres archivos markdown: el perfil del agente, el tuyo, y el protocolo de relación entre los dos. Esos archivos los copias a tu Obsidian — son el contexto estático que el agente lee en cada sesión.
+
+---
+
+## Conectar el MCP
+
+El flujo principal no es el browser — es opencode o Claude Code conectado al MCP.
+
+Crea o edita tu `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "me": {
+      "command": "/ruta/absoluta/a/ME/mcp/me-mcp.exe",
+      "env": {
+        "ME_DB_PATH":    "/ruta/absoluta/a/ME/backend/me.db",
+        "ME_VAULT_PATH": "/ruta/absoluta/a/ME/vault",
+        "ME_INIT_PATH":  "/ruta/absoluta/a/ME/ME-Init.md"
+      }
+    }
+  }
+}
+```
+
+En la primera sesión escribe `abrakadabra`. El agente carga todo el contexto y, si es la primera vez, inicia el onboarding conversacional — profundiza lo que el formulario no puede capturar y reescribe el vault con voz real.
 
 ---
 
 ## Ollama — chat con LLM (opcional)
 
-El chat requiere una máquina capaz de correr modelos locales. **El sistema funciona completo sin Ollama** — memorias, búsqueda, esfera 3D y onboarding no dependen de él.
+El sistema funciona completo sin Ollama. Las memorias, la búsqueda, la esfera y el onboarding no dependen de él.
 
 Si tu máquina lo soporta:
 
 ```bash
-# Instala Ollama desde https://ollama.ai
-# Descarga un modelo
+# instala desde https://ollama.ai
 ollama pull mistral
 
-# Activa en tu .env
+# activa en .env
 OLLAMA_URL=http://localhost:11434
 OLLAMA_MODEL=mistral
 ```
 
-Modelos recomendados según hardware:
-
-| RAM disponible | Modelo |
-|---------------|--------|
+| RAM | Modelo recomendado |
+|-----|--------------------|
 | 8 GB | `phi3`, `gemma2:2b` |
 | 16 GB | `mistral`, `llama3.2` |
 | 32 GB+ | `llama3.1:8b`, `qwen2.5:7b` |
-
-Si Ollama no está configurado, el tab Chat muestra una guía de instalación en lugar de un error.
-
----
-
-## Configuración de puertos
-
-Edita `.env` (creado por `make setup` desde `.env.example`):
-
-```env
-ME_PORT=8082                               # backend Go
-NEXT_PUBLIC_API_URL=http://localhost:8082  # frontend → backend (debe coincidir con ME_PORT)
-```
-
-Si cambias `ME_PORT`, cambia también `NEXT_PUBLIC_API_URL`. El Makefile sincroniza ambos automáticamente al leer `.env`.
-
----
-
-## Variables de entorno
-
-| Variable | Default | Obligatorio | Descripción |
-|----------|---------|-------------|-------------|
-| `ME_PORT` | `8082` | ✅ | Puerto del backend |
-| `ME_DB_PATH` | `./me.db` | ✅ | Base de datos SQLite |
-| `NEXT_PUBLIC_API_URL` | `http://localhost:8082` | ✅ | URL del backend desde el browser |
-| `OLLAMA_URL` | vacío | ❌ | URL de Ollama — si vacío, chat deshabilitado |
-| `OLLAMA_MODEL` | `mistral` | ❌ | Modelo Ollama a usar |
 
 ---
 
 ## Comandos
 
 ```bash
-make setup    # primera vez: crea .env + instala dependencias
-make install  # solo instala dependencias
-make run      # backend + frontend en paralelo
-make build    # compila para producción
-make clean    # elimina artefactos (no toca la DB)
-make clean-db # elimina la base de datos (BORRA DATOS)
+make setup      # primera vez: verifica deps + crea .env + instala
+make build-mcp  # compila el servidor MCP (una sola vez)
+make run        # backend + frontend en paralelo
+make build      # compila todo para producción
+make clean      # elimina artefactos (no toca la DB)
+make clean-db   # elimina la base de datos — BORRA TODOS LOS DATOS
 ```
+
+---
+
+## Variables de entorno
+
+| Variable | Default | Descripción |
+|----------|---------|-------------|
+| `ME_PORT` | `8082` | Puerto del backend |
+| `ME_DB_PATH` | `./me.db` | Base de datos SQLite |
+| `ME_VAULT_PATH` | `./vault` | Directorio del vault CAG |
+| `ME_INIT_PATH` | `./ME-Init.md` | Init file para el MCP |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8082` | URL del backend desde el browser |
+| `OLLAMA_URL` | vacío | URL de Ollama — vacío = deshabilitado |
+| `OLLAMA_MODEL` | `mistral` | Modelo Ollama |
 
 ---
 
@@ -117,19 +168,21 @@ make clean-db # elimina la base de datos (BORRA DATOS)
 
 ```
 ME/
-├── .env.example   ← plantilla de configuración (se commitea)
-├── .env           ← tu configuración local (NO se commitea)
-├── Makefile
-├── README.md
-├── backend/       ← Go 1.21+, SQLite+FTS5, REST API
-├── frontend/      ← Next.js 16, Tailwind, React Three Fiber
-└── docs/          ← documentación técnica
+├── ME-Init.md         ← contexto de sesión para el agente
+├── vault/             ← generado en onboarding, copiar a Obsidian
+│   ├── AGENT-IDENTITY.md
+│   ├── USER-PROFILE.md
+│   └── HOW-TO-TALK.md
+├── backend/           ← Go 1.21+, SQLite+FTS5, REST API
+├── frontend/          ← Next.js 16, Tailwind, React Three Fiber
+├── mcp/               ← servidor MCP (me-mcp.exe)
+└── docs/              ← API.md, EVASPHERE.md, ONBOARDING.md
 ```
 
 ---
 
-## Documentación
+<div align="center">
 
-- [docs/API.md](docs/API.md) — todos los endpoints con curl
-- [docs/EVASPHERE.md](docs/EVASPHERE.md) — shaders Perlin 4D, cómo agregar música
-- [docs/ONBOARDING.md](docs/ONBOARDING.md) — flujo de las 13 preguntas
+*parte del ciclo Avalon — EVA → ME → Morgana*
+
+</div>
