@@ -6,12 +6,21 @@ Sistema de memoria personal con IA local. CRUD de memorias, búsqueda full-text,
 
 ## Requisitos
 
-| Requisito | Obligatorio | Notas |
-|-----------|-------------|-------|
-| Go 1.21+ | ✅ | Backend |
-| Node.js 18+ | ✅ | Frontend |
-| gcc / MinGW | ✅ | SQLite CGO |
-| Ollama | ❌ opcional | Solo para el chat con LLM |
+| Requisito | Obligatorio | Dónde instalarlo |
+|-----------|-------------|-----------------|
+| Go 1.21+ | ✅ | https://go.dev/dl/ |
+| Node.js 18+ (LTS) | ✅ | https://nodejs.org/ |
+| gcc / MinGW | ✅ | https://jmeubank.github.io/tdm-gcc/ |
+| Git | ✅ | https://git-scm.com/ |
+| Ollama | ❌ opcional | https://ollama.ai — solo para chat con LLM |
+
+**Windows:** descarga el instalador `.msi` de Go y Node.js, ejecuta, cierra y abre la terminal.  
+**gcc:** instala TDM-GCC (link de arriba), es necesario para compilar SQLite con Go.
+
+Verifica que todo esté instalado:
+```bash
+go version && node --version && npm --version && gcc --version
+```
 
 ---
 
@@ -19,13 +28,16 @@ Sistema de memoria personal con IA local. CRUD de memorias, búsqueda full-text,
 
 ```bash
 # 1. Clonar
-git clone <repo-url> ME
+git clone https://github.com/4v41on/ME.git
 cd ME
 
-# 2. Crear .env y instalar dependencias
+# 2. Verificar dependencias + crear .env + instalar módulos
 make setup
 
-# 3. Ejecutar
+# 3. Compilar el servidor MCP (una sola vez)
+make build-mcp
+
+# 4. Ejecutar
 make run
 ```
 
