@@ -80,6 +80,33 @@ make run
 
 Abre **http://localhost:3000** y empieza.
 
+### Windows sin make
+
+Si `make` no está disponible, instálalo con:
+```bash
+winget install GnuWin32.Make
+```
+
+O corre los comandos manualmente en **dos terminales**:
+
+**Terminal 1 — backend:**
+```bash
+cd ME/backend
+set CGO_CFLAGS=-DSQLITE_ENABLE_FTS5 && set ME_PORT=8082 && set ME_DB_PATH=./me.db && go run .
+```
+
+**Terminal 2 — frontend:**
+```bash
+cd ME/frontend
+set NEXT_PUBLIC_API_URL=http://localhost:8082 && npm run dev
+```
+
+**Compilar el MCP manualmente:**
+```bash
+cd ME/mcp
+set CGO_CFLAGS=-DSQLITE_ENABLE_FTS5 && go build -o me-mcp.exe .
+```
+
 ---
 
 ## 🌱 Primera vez
