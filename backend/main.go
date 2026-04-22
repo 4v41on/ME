@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"me/backend/config"
 	"me/backend/db"
@@ -180,19 +181,28 @@ func main() {
 		fmt.Fprintf(w, `{"status":"ok","port":"%s"}`, cfg.Port)
 	})
 
-	addr := ":" + cfg.Port
-	log.Printf("ME backend listening on %s", addr)
+	addr := "127.0.0.1:" + cfg.Port
+	log.Printf("ME backend listening on %s (localhost only)", addr)
 	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
 }
 
-// corsMiddleware adds CORS headers to allow the Next.js dev server to call the API.
+// corsMiddleware allows only the local Next.js frontend to call the API.
+// Restricting the origin prevents malicious websites from reading user data
+// if the backend is running (localhost CORS attack).
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		origin := r.Header.Get("Origin")
+		// Allow requests from localhost on any port (dev + prod Next.js).
+		// Requests with no Origin header (curl, MCP server) are always allowed.
+		if origin == "" || isLocalOrigin(origin) {
+			if origin != "" {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+			}
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		}
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
@@ -201,4 +211,10 @@ func corsMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// isLocalOrigin reports whether the given Origin header is a localhost origin.
+func isLocalOrigin(origin string) bool {
+	return strings.HasPrefix(origin, "http://localhost:") ||
+		strings.HasPrefix(origin, "http://127.0.0.1:")
 }

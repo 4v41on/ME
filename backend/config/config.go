@@ -23,7 +23,7 @@ func Load() *Config {
 	return &Config{
 		Port:        getEnv("ME_PORT", "8082"),
 		DBPath:      getEnv("ME_DB_PATH", "./me.db"),
-		VaultPath:   getEnv("ME_VAULT_PATH", "./vault"),
+		VaultPath:   getEnv("ME_VAULT_PATH", "../vault"),
 		OllamaURL:   getEnv("OLLAMA_URL", ""),   // empty = disabled
 		OllamaModel: getEnv("OLLAMA_MODEL", "mistral"),
 	}

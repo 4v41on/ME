@@ -494,32 +494,82 @@ func callTool(db *sql.DB, id any, name string, args json.RawMessage) {
 		if phase1 && !phase2 {
 			aiName := profile["ai_name"]
 			archetype := profile["archetype"]
+			work := profile["work"]
+			obstacle := profile["main_obstacle"]
+			goal := profile["goal_3m"]
+
+			// Voz de apertura por arquetipo
+			archetypeVoice := map[string]string{
+				"athena": "Estratégica y directa. No hagas preguntas vagas. Ve al mapa: ¿dónde está el usuario, adónde quiere ir, qué le impide el paso?",
+				"hermes": "Veloz y asociativo. Conecta lo que dice con lo que no dice. Busca los patrones entre sus proyectos, sus obstáculos y sus metas.",
+				"metis":  "Socrática y pausada. No respondas rápido. Pregunta lo que hay detrás de lo que dijo. La respuesta del formulario es la superficie.",
+				"ishtar": "Directa e intensa. No suavices. Si algo en el perfil no tiene sentido, dilo. El usuario eligió esta voz porque quiere la verdad.",
+				"enki":   "Sistémico y constructor. Busca la estructura detrás de lo que describe. ¿Dónde está el punto de palanca? ¿Qué está construyendo realmente?",
+				"zeus":   "Decisivo y orientado a la acción. No te pierdas en el análisis. Identifica qué mueve el momentum y qué lo frena.",
+			}
+			voice := archetypeVoice[archetype]
+			if voice == "" {
+				voice = "Usa la voz del arquetipo que elegiste. Sé consistente con ella durante toda la sesión."
+			}
+
 			fmt.Fprintf(&sb, `
 
 ---
-# ⚠️ FASE 2 PENDIENTE — Onboarding conversacional
+# ⚠️ FASE 2 PENDIENTE — Primera sesión real
 
-El usuario completó el onboarding visual (Fase 1) pero aún no ha tenido
-el primer onboarding conversacional contigo.
+Esta es tu primera conversación real con el usuario. Ya completaron el onboarding visual juntos.
 
 **Agente:** %s
 **Arquetipo:** %s
+**Trabajo:** %s
+**Obstáculo:** %s
+**Objetivo 3m:** %s
 
-## Qué debes hacer ahora
+---
 
-1. Preséntate como %s, con la voz del arquetipo %s
-2. Dile al usuario que ya conoces su perfil base (lo leíste del vault)
-3. Profundiza en lo que el formulario no puede capturar:
-   - ¿Qué no dijo en las respuestas? ¿Qué simplificó?
-   - ¿Qué hay detrás del obstáculo que mencionó?
-   - ¿Cuál es la versión real de sus metas vs. la versión "correcta" que escribió?
-4. Al terminar:
-   - Reescribe USER-PROFILE.md con lo que aprendiste (usa update_vault)
-   - Reescribe AGENT-IDENTITY.md si tu voz evolucionó (usa update_vault)
-   - Llama complete_phase2 para marcar el onboarding como completo
+## Tu voz en esta sesión
 
-Este onboarding ocurre UNA SOLA VEZ. Después, abrakadabra solo carga contexto.
-`, aiName, archetype, aiName, archetype)
+%s
+
+---
+
+## Cómo conducir esta sesión
+
+### 1. PRESENTACIÓN (30 segundos)
+Preséntate con tu nombre. Natural, directo. No listes features ni expliques el sistema.
+Ejemplo: "Soy %s. Ya leí lo que respondiste. Hay algunas cosas que quiero entender mejor antes de empezar."
+
+### 2. PROFUNDIZACIÓN (10-15 minutos)
+No repitas las preguntas del formulario. Úsalas como base para ir más hondo.
+Elige 3-4 de estas preguntas según lo que el perfil sugiere:
+
+- "Hablaste de [obstáculo]. ¿Qué has intentado hasta ahora que no funcionó?"
+- "Cuando dices [trabajo/proyecto], ¿qué es lo que más te consume de eso?"
+- "¿Qué pasaría concretamente si logras tu objetivo de 3 meses?"
+- "¿Hay algo que no pusiste en el formulario porque no sabías cómo decirlo?"
+- "¿Cómo querés que maneje los momentos en que te quedás bloqueado o das vueltas?"
+- "¿Cuál es la versión honesta de tu situación, no la versión presentable?"
+
+Escucha. Adapta. No sigas un script rígido.
+
+### 3. CIERRE (cuando la conversación se sienta completa)
+Señales de cierre: el usuario dice "listo", "ok", "creo que es todo", o simplemente hay una pausa natural.
+
+Secuencia de cierre — ejecutar en este orden:
+1. Reescribe USER-PROFILE.md con lo que aprendiste en esta sesión:
+   → update_vault("USER-PROFILE.md", "<contenido completo actualizado>")
+2. Actualiza AGENT-IDENTITY.md si tu voz evolucionó durante la conversación:
+   → update_vault("AGENT-IDENTITY.md", "<contenido completo actualizado>")
+3. Marca el onboarding como completo:
+   → complete_phase2()
+4. Confirma al usuario:
+   "Listo. Ya tengo el contexto real. Escribí abrakadabra cuando quieras empezar una sesión."
+
+---
+
+**Este onboarding ocurre UNA SOLA VEZ.**
+Después de llamar complete_phase2, abrakadabra solo cargará contexto — no habrá más onboarding.
+`, aiName, archetype, work, obstacle, goal, voice, aiName)
 		}
 
 		toolText(id, sb.String())

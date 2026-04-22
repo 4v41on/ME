@@ -103,6 +103,7 @@ export function QuestionScreen({ question, questionNumber, total, onAnswer }: Pr
       <p className="font-mono text-sm text-[#d4d4d8]">
         <span className="text-[#a855f7] mr-2">›</span>
         <TypewriterText
+          key={question.id}
           text={question.text}
           speed={22}
           cursor={false}

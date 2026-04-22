@@ -17,6 +17,10 @@ mcp/me-mcp
 
 # Vault — generado en runtime al completar onboarding (datos personales)
 vault/
+backend/vault/
+
+# MCP config — rutas absolutas específicas de cada máquina
+.mcp.json
 
 # Frontend — Next.js
 frontend/node_modules/

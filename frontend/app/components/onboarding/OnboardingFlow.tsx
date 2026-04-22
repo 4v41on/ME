@@ -43,6 +43,7 @@ export function OnboardingFlow({ children }: Props) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [questionIndex, setQuestionIndex] = useState(0);
   const [transitioning, setTransitioning] = useState(false);
+  const [vaultPath, setVaultPath] = useState("");
   const { setSphereState, setSphereVisible, state } = useSphere();
 
   useEffect(() => {
@@ -108,7 +109,8 @@ export function OnboardingFlow({ children }: Props) {
   const persistAll = async (allAnswers: Record<string, string>) => {
     const answerEntries = Object.entries(allAnswers).map(([key, value]) => ({ key, value }));
     try {
-      await completeOnboarding({ ai_name: aiName, archetype, answers: answerEntries });
+      const res = await completeOnboarding({ ai_name: aiName, archetype, answers: answerEntries });
+      if (res.vault_path) setVaultPath(res.vault_path);
     } catch {}
   };
 
@@ -199,6 +201,7 @@ export function OnboardingFlow({ children }: Props) {
               {stage === "awaiting" && (
                 <AwaitingOpencode
                   aiName={aiName}
+                  vaultPath={vaultPath}
                   onEnter={handleEnterSystem}
                 />
               )}

@@ -133,7 +133,13 @@ La personalidad semilla. No es definitiva — el agente crece desde ahí via CAG
 **Paso 3 — 13 preguntas.**
 Quién eres, cómo funcionas, cómo quieres que te hablen. Sin trampa, sin truco — el sistema usa exactamente lo que respondes.
 
-Al terminar, `vault/` aparece con tres archivos: el perfil del agente, el tuyo, y el protocolo de relación entre los dos. Esos archivos van a tu Obsidian — son el contexto estático que el agente lee en cada sesión sin que tengas que repetirle nada.
+Al terminar, `vault/` aparece con tres archivos: el perfil del agente, el tuyo, y el protocolo de relación entre los dos. Son el contexto estático que el agente lee en cada sesión sin que tengas que repetirle nada.
+
+**Si usás Obsidian:** apuntá `ME_VAULT_PATH` en `.env` a tu vault de Obsidian (o a una subcarpeta dentro de él) antes de correr el onboarding. Los archivos se generan directamente ahí y podés editarlos, expandirlos con tareas, métricas y notas, y el agente los lee todo junto.
+
+**Si no usás Obsidian:** el vault se genera en `ME/vault/` por default. Son archivos `.md` — cualquier editor de texto los abre. El sistema funciona igual.
+
+> **Abrí opencode desde la carpeta `ME_VAULT_PATH`** — así carga `CLAUDE.md` y `ME-Init.md` como contexto estático automáticamente.
 
 ---
 
@@ -159,6 +165,9 @@ Crea o edita tu `.mcp.json`:
   }
 }
 ```
+
+**Abrí opencode o Claude Code desde la carpeta `ME/vault/`**, no desde la raíz del repo.
+El agente usa `CLAUDE.md` y `ME-Init.md` como contexto estático (CAG) al iniciar — abrirlos desde `vault/` garantiza que los lea automáticamente y el RAG funcione desde el primer mensaje.
 
 En la primera sesión escribe `abrakadabra`.
 
@@ -187,6 +196,27 @@ Cinco presets para diferentes estados cognitivos. Cada uno tiene su propio color
 El player está abajo a la izquierda. Click en cualquier preset para activarlo — la esfera cambia de color y velocidad en tiempo real. Click de nuevo para detenerlo.
 
 **Nota técnica:** el ritmo que percibes es real — dos osciladores, uno por oído, con la diferencia exacta del beat. Usa auriculares para que funcione correctamente.
+
+---
+
+## 🔒 Privacidad
+
+Todo corre en tu máquina. No hay servidores de ME en la nube, no hay cuenta, no hay telemetría.
+
+**Puertos que abre el sistema:**
+
+| Puerto | Qué es | Quién puede acceder |
+|--------|--------|-------------------|
+| `8082` | Backend — API REST | Solo tu PC (localhost) |
+| `3000` | Frontend — la interfaz | Solo tu PC (localhost) |
+
+Ambos escuchan en `127.0.0.1`. Eso significa que ningún otro dispositivo en tu red puede conectarse — solo vos, desde tu propio browser.
+
+**Si Windows Firewall te pregunta** al ejecutar el backend: podés bloquear el acceso a redes públicas y privadas sin problema. El sistema no necesita internet para funcionar.
+
+**Dónde viven tus datos:** en un archivo SQLite en `ME/backend/me.db`. Tus memorias, tu perfil, tu historial de chat — todo ahí, en tu máquina. Para desinstalar, borrás la carpeta.
+
+**Conexiones externas:** ninguna por defecto. ME es offline. Si configurás Ollama, también corre en tu máquina. La única red que usa el sistema es localhost.
 
 ---
 
@@ -234,7 +264,7 @@ make clean-db   # elimina la base de datos — BORRA TODO, sin preguntar
 |----------|---------|-------------|
 | `ME_PORT` | `8082` | Puerto del backend |
 | `ME_DB_PATH` | `./me.db` | Base de datos SQLite — Šà 𒊮 |
-| `ME_VAULT_PATH` | `./vault` | Directorio del vault CAG |
+| `ME_VAULT_PATH` | `../vault` | Directorio del vault CAG — apuntá a tu vault de Obsidian si usás uno |
 | `ME_INIT_PATH` | `./ME-Init.md` | Init file para el MCP |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8082` | URL del backend desde el browser |
 | `OLLAMA_URL` | vacío | URL de Ollama — vacío = deshabilitado |
