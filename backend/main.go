@@ -29,6 +29,7 @@ func main() {
 	profile := handlers.NewProfileHandler(database)
 	skills := handlers.NewSkillsHandler(database)
 	ace := handlers.NewACEHandler(database)
+	events := handlers.NewEventsHandler()
 
 	mux := http.NewServeMux()
 
@@ -107,6 +108,8 @@ func main() {
 			profile.Get(w, r)
 		case http.MethodPost:
 			profile.Save(w, r)
+		case http.MethodDelete:
+			profile.Reset(w, r)
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -160,6 +163,15 @@ func main() {
 			return
 		}
 		ace.Recent(w, r)
+	})
+
+	// SSE — sphere events stream
+	mux.HandleFunc("/api/events", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		events.Stream(w, r)
 	})
 
 	// Health check

@@ -1,127 +1,190 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { EvaSphere } from "./EvaSphere";
-import { AudioEngine, type AudioData } from "./AudioEngine";
+import { AudioEngine } from "./AudioEngine";
+import { BinauralEngine, BINAURAL_PRESETS, type BinauralPreset } from "./BinauralEngine";
+import { useSphere } from "@/app/context/SphereContext";
 
-// Tracks are detected from /public/audio/ at build time via the API route.
-// At runtime the player fetches /api/playlist to get the file list.
-const SILENT_AUDIO: AudioData = { amplitude: 0, frequency: 0, raw: new Uint8Array(0) };
+type Mode = "binaural" | "file";
 
 /**
- * MusicPlayer — Playlist UI + EvaSphere integration.
+ * MusicPlayer — driver de audio + esfera.
  *
- * Detects .mp3/.ogg files from /public/audio/ via GET /api/playlist.
- * User can add files manually to frontend/public/audio/ and restart.
- * The sphere reacts to the playing track in real time.
+ * Escribe en SphereContext.audioRef cada frame.
+ * EvaSphere lee desde el mismo ref en useFrame — fuente única de verdad.
+ *
+ * Binaural: arranca al seleccionar preset. Sin botón ▶ separado.
+ * File: arranca al seleccionar track.
  */
 export function MusicPlayer() {
+  const { sphereVisible, audioRef } = useSphere();
+
   const [tracks, setTracks] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [volume, setVolume] = useState(0.7);
-  const [audioData, setAudioData] = useState<AudioData>(SILENT_AUDIO);
+  const [volume, setVolume] = useState(0.5);
+  const [mode, setMode] = useState<Mode>("binaural");
+  const handleModeChange = (m: Mode) => { setMode(m); modeRef.current = m; };
+  const [activePreset, setActivePreset] = useState<BinauralPreset | null>(null);
 
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const engineRef = useRef<AudioEngine>(new AudioEngine());
+  const htmlAudioRef = useRef<HTMLAudioElement>(null);
+  const fileEngineRef = useRef<AudioEngine>(new AudioEngine());
+  const binauralEngineRef = useRef<BinauralEngine>(new BinauralEngine());
   const rafRef = useRef<number>(0);
-  const engineConnected = useRef(false);
+  const fileConnected = useRef(false);
+  const lastProgressUpdate = useRef(0);
+  // Indicador de amplitud en vivo — DOM directo, sin re-renders
+  const ampDotRef = useRef<HTMLSpanElement>(null);
+  // Glow ambiente detrás de la esfera — pulsa con el audio
+  const glowRef = useRef<HTMLDivElement>(null);
 
-  // Load track list from API route
+  // Refs que el RAF puede leer sin re-crear el loop (evita stale closure)
+  const activePresetRef = useRef<BinauralPreset | null>(null);
+  const modeRef = useRef<Mode>("binaural");
+
   useEffect(() => {
     fetch("/api/playlist")
       .then((r) => r.json())
-      .then((data) => setTracks(data.tracks ?? []))
-      .catch(() => setTracks([]));
+      .then((d) => setTracks(d.tracks ?? []))
+      .catch(() => {});
   }, []);
 
-  // Animation loop — sample audio every frame
-  const tick = useCallback(() => {
-    setAudioData(engineRef.current.sample());
-    if (audioRef.current) {
-      const el = audioRef.current;
-      setProgress(el.duration > 0 ? el.currentTime / el.duration : 0);
-    }
-    rafRef.current = requestAnimationFrame(tick);
-  }, []);
-
+  // Loop de audio — escribe en audioRef compartido del context
   useEffect(() => {
+    const tick = (ts: number) => {
+      // Lee desde refs — no stale closure aunque el effect no se re-cree
+      if (activePresetRef.current) {
+        const d = binauralEngineRef.current.sample();
+        audioRef.current = { amplitude: d.amplitude, frequency: d.frequency, raw: d.raw };
+      } else if (modeRef.current === "file") {
+        audioRef.current = fileEngineRef.current.sample();
+      } else {
+        audioRef.current = { amplitude: 0, frequency: 0, raw: new Uint8Array(0) as Uint8Array<ArrayBuffer> };
+      }
+
+      // Glow ambiente — color del preset, intensidad con el beat
+      if (glowRef.current) {
+        const a = audioRef.current.amplitude;
+        const dotColor = activePresetRef.current
+          ? BINAURAL_PRESETS[activePresetRef.current].dotColor
+          : "#a855f7";
+        const intensity = activePresetRef.current ? 0.12 + a * 0.18 : 0.06;
+        glowRef.current.style.background =
+          `radial-gradient(ellipse 60% 55% at 50% 50%, ${dotColor}${Math.round(intensity * 255).toString(16).padStart(2,"0")} 0%, transparent 70%)`;
+      }
+
+      // Actualizar indicador visual en vivo sin disparar re-renders
+      if (ampDotRef.current) {
+        const a = audioRef.current.amplitude;
+        const size = 4 + a * 10; // 4px → 14px según amplitud
+        const dotColor = activePresetRef.current
+          ? BINAURAL_PRESETS[activePresetRef.current].dotColor
+          : "#a855f7";
+        ampDotRef.current.style.width  = `${size}px`;
+        ampDotRef.current.style.height = `${size}px`;
+        ampDotRef.current.style.background = dotColor;
+        ampDotRef.current.style.boxShadow = `0 0 8px ${dotColor}, 0 0 16px ${dotColor}40`;
+        ampDotRef.current.style.opacity = activePresetRef.current ? "1" : "0";
+      }
+
+      if (modeRef.current === "file" && ts - lastProgressUpdate.current > 300) {
+        lastProgressUpdate.current = ts;
+        const el = htmlAudioRef.current;
+        if (el) {
+          const p = el.duration > 0 ? el.currentTime / el.duration : 0;
+          setProgress((prev) => Math.abs(prev - p) > 0.002 ? p : prev);
+        }
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
     rafRef.current = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(rafRef.current);
-      engineRef.current.destroy();
+      fileEngineRef.current.destroy();
+      binauralEngineRef.current.stop();
     };
-  }, [tick]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Connect audio element to engine when track changes
-  useEffect(() => {
-    engineConnected.current = false;
-  }, [currentIndex]);
+  // selectPreset — handler directo en el click (no useEffect).
+  // AudioContext.resume() requiere user gesture activo.
+  // Si se llama desde useEffect (post-paint), el browser lo silencia.
+  const selectPreset = async (p: BinauralPreset) => {
+    const next = activePreset === p ? null : p;
+    setActivePreset(next);
+    activePresetRef.current = next;
 
-  const connectEngine = () => {
-    if (!audioRef.current || engineConnected.current) return;
-    engineRef.current.connect(audioRef.current);
-    engineConnected.current = true;
-  };
-
-  const togglePlay = async () => {
-    if (!audioRef.current || tracks.length === 0) return;
-    connectEngine();
-    await engineRef.current.resume();
-    if (playing) {
-      audioRef.current.pause();
-      setPlaying(false);
+    if (next) {
+      await binauralEngineRef.current.start(next, volume); // dentro del gesture
     } else {
-      await audioRef.current.play();
-      setPlaying(true);
+      binauralEngineRef.current.stop();
     }
   };
 
-  const next = () => {
-    setCurrentIndex((i) => (i + 1) % Math.max(tracks.length, 1));
-    setPlaying(false);
-    engineConnected.current = false;
+  // File player
+  const connectFile = () => {
+    if (!htmlAudioRef.current || fileConnected.current) return;
+    fileEngineRef.current.connect(htmlAudioRef.current);
+    fileConnected.current = true;
   };
 
-  const prev = () => {
-    setCurrentIndex((i) => (i - 1 + Math.max(tracks.length, 1)) % Math.max(tracks.length, 1));
-    setPlaying(false);
-    engineConnected.current = false;
+  const togglePlay = async () => {
+    if (!htmlAudioRef.current || tracks.length === 0) return;
+    connectFile();
+    await fileEngineRef.current.resume();
+    if (playing) { htmlAudioRef.current.pause(); setPlaying(false); }
+    else { await htmlAudioRef.current.play(); setPlaying(true); }
   };
 
-  const handleEnded = () => next();
+  const nextTrack = () => { setCurrentIndex((i) => (i + 1) % Math.max(tracks.length, 1)); setPlaying(false); fileConnected.current = false; };
+  const prevTrack = () => { setCurrentIndex((i) => (i - 1 + Math.max(tracks.length, 1)) % Math.max(tracks.length, 1)); setPlaying(false); fileConnected.current = false; };
 
   const currentTrack = tracks[currentIndex];
   const trackName = currentTrack
     ? decodeURIComponent(currentTrack.split("/").pop() ?? "").replace(/\.(mp3|ogg|wav)$/i, "")
-    : "sin tracks";
+    : null;
+
+  const handleVolume = (v: number) => {
+    setVolume(v);
+    if (htmlAudioRef.current) htmlAudioRef.current.volume = v;
+    binauralEngineRef.current.setVolume(v);
+  };
+
+  const presetEntries = Object.entries(BINAURAL_PRESETS) as [BinauralPreset, typeof BINAURAL_PRESETS[BinauralPreset]][];
 
   return (
-    <div className="flex flex-col items-center gap-6 w-full">
-      {/* Sphere */}
-      <div className="w-full aspect-square max-w-sm rounded-full overflow-hidden">
-        <Canvas camera={{ position: [0, 0, 3.5], fov: 45 }}>
-          <ambientLight intensity={0.1} />
-          <EvaSphere audioData={audioData} />
+    <div className="absolute inset-0">
+      {/* Glow ambiente — pulsa con el audio, detrás de todo */}
+      <div
+        ref={glowRef}
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: "radial-gradient(ellipse 60% 55% at 50% 50%, #a855f710 0%, transparent 70%)" }}
+      />
+
+      {/* Canvas esfera */}
+      <div
+        className="absolute inset-0 transition-opacity duration-[2000ms] ease-in"
+        style={{ opacity: sphereVisible ? 1 : 0 }}
+      >
+        <Canvas
+          className="absolute inset-0"
+          camera={{ position: [0, 0, 3.2], fov: 42 }}
+          gl={{ antialias: true, alpha: true }}
+        >
+          <ambientLight intensity={0.08} />
+          <EvaSphere />
         </Canvas>
       </div>
 
-      {/* Track name */}
-      <div className="text-center">
-        <p className="text-[#8888A0] text-xs font-mono uppercase tracking-widest mb-1">
-          reproduciendo
-        </p>
-        <p className="text-white text-sm font-mono truncate max-w-xs">{trackName}</p>
-      </div>
-
-      {/* Hidden audio element */}
+      {/* Audio file element */}
       {currentTrack && (
         <audio
-          ref={audioRef}
+          ref={htmlAudioRef}
           src={currentTrack}
-          onEnded={handleEnded}
+          onEnded={nextTrack}
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
           style={{ display: "none" }}
@@ -129,90 +192,125 @@ export function MusicPlayer() {
         />
       )}
 
-      {/* Progress bar */}
-      <div className="w-full max-w-xs bg-white/10 rounded-full h-1">
-        <div
-          className="bg-[#6C63FF] h-1 rounded-full transition-all"
-          style={{ width: `${progress * 100}%` }}
-        />
-      </div>
+      {/* ── Player — estética alien minimal ── */}
+      <div className="absolute bottom-8 left-8 z-30 flex flex-col gap-3 select-none">
 
-      {/* Controls */}
-      <div className="flex items-center gap-6">
-        <button
-          onClick={prev}
-          className="text-[#8888A0] hover:text-white transition-colors text-lg font-mono"
-          disabled={tracks.length === 0}
-        >
-          ⏮
-        </button>
-        <button
-          onClick={togglePlay}
-          className="w-12 h-12 rounded-full bg-[#6C63FF] hover:bg-[#5a52e0] disabled:opacity-40 flex items-center justify-center text-white text-xl transition-colors"
-          disabled={tracks.length === 0}
-        >
-          {playing ? "⏸" : "▶"}
-        </button>
-        <button
-          onClick={next}
-          className="text-[#8888A0] hover:text-white transition-colors text-lg font-mono"
-          disabled={tracks.length === 0}
-        >
-          ⏭
-        </button>
-      </div>
-
-      {/* Volume */}
-      <div className="flex items-center gap-3 w-full max-w-xs">
-        <span className="text-[#8888A0] text-xs font-mono">VOL</span>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value={volume}
-          onChange={(e) => {
-            const v = parseFloat(e.target.value);
-            setVolume(v);
-            if (audioRef.current) audioRef.current.volume = v;
-          }}
-          className="flex-1 accent-[#6C63FF]"
-        />
-        <span className="text-[#8888A0] text-xs font-mono w-6">{Math.round(volume * 100)}</span>
-      </div>
-
-      {tracks.length === 0 && (
-        <p className="text-[#8888A0] text-xs font-mono text-center max-w-xs">
-          Agrega archivos .mp3 o .ogg a{" "}
-          <code className="text-[#6C63FF]">frontend/public/audio/</code> y reinicia.
-        </p>
-      )}
-
-      {/* Track list */}
-      {tracks.length > 1 && (
-        <div className="w-full max-w-xs flex flex-col gap-1 max-h-40 overflow-y-auto">
-          {tracks.map((t, i) => {
-            const name = decodeURIComponent(t.split("/").pop() ?? "").replace(/\.(mp3|ogg|wav)$/i, "");
-            return (
+        {/* Mode tabs — solo si hay tracks */}
+        {tracks.length > 0 && (
+          <div className="flex gap-2 mb-1">
+            {(["binaural", "file"] as Mode[]).map((m) => (
               <button
-                key={t}
-                onClick={() => {
-                  setCurrentIndex(i);
-                  setPlaying(false);
-                  engineConnected.current = false;
-                }}
-                className={`text-left text-xs font-mono px-3 py-2 rounded transition-colors ${
-                  i === currentIndex
-                    ? "text-[#6C63FF] bg-[#6C63FF]/10"
-                    : "text-[#8888A0] hover:text-white"
+                key={m}
+                onClick={() => handleModeChange(m)}
+                className={`font-mono text-[9px] uppercase tracking-[0.2em] px-2 py-0.5 transition-colors ${
+                  mode === m ? "text-[#a855f7]" : "text-[#3a3a4a] hover:text-[#71717a]"
                 }`}
               >
-                {name}
+                {m}
               </button>
-            );
-          })}
+            ))}
+          </div>
+        )}
+
+        {/* Binaural — presets como puntos con label */}
+        {mode === "binaural" && (
+          <div className="flex flex-col gap-1.5">
+            {/* Indicador de amplitud en vivo — pulsa con el beat */}
+            <span
+              ref={ampDotRef}
+              className="rounded-full mb-1 opacity-0 transition-none"
+              style={{ width: "4px", height: "4px" }}
+            />
+            {presetEntries.map(([id, cfg]) => {
+              const isActive = activePreset === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => selectPreset(id)}
+                  className="flex items-center gap-2.5 group"
+                  data-cursor
+                >
+                  {/* Dot indicator */}
+                  <span
+                    className="w-1.5 h-1.5 rounded-full transition-all duration-300 shrink-0"
+                    style={{
+                      background: isActive ? cfg.dotColor : "#27272a",
+                      boxShadow: isActive ? `0 0 6px ${cfg.dotColor}, 0 0 12px ${cfg.dotColor}40` : "none",
+                    }}
+                  />
+                  <span
+                    className={`font-mono text-[10px] transition-colors ${
+                      isActive ? "" : "text-[#3a3a4a] group-hover:text-[#71717a]"
+                    }`}
+                    style={isActive ? { color: cfg.dotColor } : undefined}
+                  >
+                    {cfg.label}
+                  </span>
+                  {/* Hz indicator */}
+                  <span
+                    className="font-mono text-[9px] ml-auto transition-colors"
+                    style={{ color: isActive ? `${cfg.dotColor}80` : "#27272a" }}
+                  >
+                    {cfg.beat}hz
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* File player — mínimo */}
+        {mode === "file" && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3">
+              <button onClick={prevTrack} className="text-[#3a3a4a] hover:text-[#71717a] transition-colors font-mono text-xs">⏮</button>
+              <button
+                onClick={togglePlay}
+                className={`w-8 h-8 flex items-center justify-center border transition-colors text-xs ${
+                  playing
+                    ? "border-[#a855f7] text-[#a855f7]"
+                    : "border-[#27272a] text-[#3a3a4a] hover:border-[#a855f7]/40 hover:text-[#71717a]"
+                }`}
+                style={{ borderRadius: 0 }}
+                disabled={tracks.length === 0}
+              >
+                {playing ? "⏸" : "▶"}
+              </button>
+              <button onClick={nextTrack} className="text-[#3a3a4a] hover:text-[#71717a] transition-colors font-mono text-xs">⏭</button>
+            </div>
+            {trackName && (
+              <span className="font-mono text-[9px] text-[#27272a] truncate max-w-[160px]">{trackName}</span>
+            )}
+            {currentTrack && (
+              <div className="w-28 h-px bg-[#1a1a1a] relative">
+                <div className="absolute top-0 left-0 h-full bg-[#a855f7]/40" style={{ width: `${progress * 100}%`, transition: "width 0.3s linear" }} />
+              </div>
+            )}
+            {tracks.length === 0 && (
+              <span className="font-mono text-[9px] text-[#27272a]">public/audio/</span>
+            )}
+          </div>
+        )}
+
+        {/* Volume — siempre visible, mínimo */}
+        <div className="flex items-center gap-2 mt-1">
+          <span
+            className="w-1 h-1 rounded-full shrink-0"
+            style={{ background: "#27272a" }}
+          />
+          <input
+            type="range" min="0" max="1" step="0.05"
+            value={volume}
+            onChange={(e) => handleVolume(parseFloat(e.target.value))}
+            className="w-16"
+            style={{
+              cursor: "pointer",
+              accentColor: "#a855f7",
+              opacity: 0.4,
+            }}
+          />
         </div>
-      )}
+      </div>
     </div>
   );
 }

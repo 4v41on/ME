@@ -1,17 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { TypewriterText } from "@/app/components/ui/TypewriterText";
 
 interface Props {
   onNamed: (name: string) => void;
 }
 
-/**
- * NamingScreen — first screen of onboarding.
- * The user names their AI. This name appears everywhere in the system.
- */
+const LINES = [
+  { text: "sistema iniciando...", delay: 0 },
+  { text: "identificando entidad cognitiva...", delay: 900 },
+  { text: "se requiere designación.", delay: 1900 },
+];
+
 export function NamingScreen({ onNamed }: Props) {
   const [name, setName] = useState("");
+  const [linesDone, setLinesDone] = useState(0);
+  const [showInput, setShowInput] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Naming stage: esfera todavía dormida/invisible, el texto toma todo el protagonismo
+  // La esfera se activa desde OnboardingFlow.handleNamed tras confirmar el nombre
+
+  useEffect(() => {
+    if (linesDone >= LINES.length) {
+      const t = setTimeout(() => {
+        setShowInput(true);
+        setTimeout(() => inputRef.current?.focus(), 100);
+      }, 300);
+      return () => clearTimeout(t);
+    }
+  }, [linesDone]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,35 +38,60 @@ export function NamingScreen({ onNamed }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-8 w-full max-w-lg">
-      <div className="flex flex-col gap-2">
-        <span className="text-[#6C63FF] text-xs font-mono uppercase tracking-widest">
-          Primer paso
-        </span>
-        <h2 className="text-white text-2xl font-medium leading-relaxed">
-          ¿Cómo se llama tu IA?
-        </h2>
-        <p className="text-[#8888A0] text-sm">
-          Este nombre aparece en todo el sistema. Puedes cambiarlo después.
-        </p>
-      </div>
+    <div
+      className="flex flex-col gap-5 w-full max-w-sm animate-fade-in rounded-sm px-7 py-8"
+      style={{
+        background: "rgba(0,0,0,0.55)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+        border: "1px solid rgba(255,255,255,0.06)",
+      }}
+    >
+      {LINES.map((line, i) => (
+        <div key={i} className={`font-mono text-sm text-[#b4b4be] ${i > linesDone ? "invisible" : ""}`}>
+          {i <= linesDone && (
+            <>
+              <span className="text-[#a855f7] mr-2">›</span>
+              <TypewriterText
+                text={line.text}
+                speed={30}
+                delay={i === 0 ? 0 : 0}
+                cursor={i === linesDone && linesDone < LINES.length - 1}
+                onComplete={() => setLinesDone((n) => Math.max(n, i + 1))}
+              />
+            </>
+          )}
+        </div>
+      ))}
 
-      <input
-        type="text"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Nombre de tu IA..."
-        autoFocus
-        className="bg-[#0D0D14] border border-white/10 rounded-lg px-4 py-4 text-white text-lg focus:outline-none focus:border-[#6C63FF] placeholder:text-[#8888A0]"
-      />
+      {showInput && (
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-6 mt-4 animate-fade-in-up"
+        >
+          <div className="relative">
+            <input
+              ref={inputRef}
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onFocus={() => {}}
+              placeholder="_ _ _ _ _ _ _ _"
+              autoComplete="off"
+              className="w-full bg-transparent border-b border-[#3f3f46] focus:border-[#a855f7] px-0 py-3 text-[#fafafa] font-mono text-lg focus:outline-none placeholder:text-[#3f3f46] transition-colors"
+            />
+          </div>
 
-      <button
-        type="submit"
-        disabled={!name.trim()}
-        className="bg-[#6C63FF] hover:bg-[#5a52e0] disabled:opacity-30 text-white font-mono py-3 px-6 rounded-lg transition-colors self-start"
-      >
-        Continuar →
-      </button>
-    </form>
+          <button
+            type="submit"
+            disabled={!name.trim()}
+            className="self-start font-mono text-sm text-[#a1a1aa] hover:text-[#fafafa] disabled:opacity-20 transition-colors flex items-center gap-2 group"
+          >
+            <span className="text-[#a855f7] group-hover:translate-x-1 transition-transform">→</span>
+            continuar
+          </button>
+        </form>
+      )}
+    </div>
   );
 }

@@ -161,7 +161,7 @@ export async function getChatHistory(): Promise<ChatMessage[]> {
 // --- Profile / Onboarding ---
 
 export async function getProfile(): Promise<ProfileResponse> {
-  const res = await fetch(`${BASE}/api/profile`);
+  const res = await fetch(`${BASE}/api/profile`, { cache: "no-store" });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
@@ -187,6 +187,12 @@ export async function completeOnboarding(
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
+}
+
+// resetProfile — borra perfil y memorias de onboarding. Útil para depuración.
+export async function resetProfile(): Promise<void> {
+  const res = await fetch(`${BASE}/api/profile`, { method: "DELETE" });
+  if (!res.ok) throw new Error(await res.text());
 }
 
 // --- ACE ---

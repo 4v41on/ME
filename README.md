@@ -166,6 +166,30 @@ El agente carga el contexto completo — ME-Init.md, vault, perfil — y si es l
 
 ---
 
+## ◎ EvaSphere
+
+La esfera no es decoración. Es el organismo vivo del sistema.
+
+Vive en la pantalla en todo momento — respira cuando está en reposo, reacciona cuando el sistema piensa, y pulsa al ritmo exacto del sonido cuando los binaural beats están activos.
+
+### Binaural beats
+
+Cinco presets para diferentes estados cognitivos. Cada uno tiene su propio color, velocidad y patrón de movimiento:
+
+| Preset | Beat | Estado | Color |
+|--------|------|--------|-------|
+| delta | 2 Hz | sueño profundo | índigo |
+| theta | 6 Hz | meditación / creatividad | violeta |
+| alpha | 10 Hz | relajación / foco suave | rosa |
+| beta | 20 Hz | foco activo / alerta | cian |
+| gamma | 40 Hz | alta concentración | oro |
+
+El player está abajo a la izquierda. Click en cualquier preset para activarlo — la esfera cambia de color y velocidad en tiempo real. Click de nuevo para detenerlo.
+
+**Nota técnica:** el ritmo que percibes es real — dos osciladores, uno por oído, con la diferencia exacta del beat. Usa auriculares para que funcione correctamente.
+
+---
+
 ## 🤖 Ollama — LLM local (opcional)
 
 El sistema funciona completo sin Ollama. Las memorias, la búsqueda, la esfera y el onboarding no lo necesitan.
@@ -222,15 +246,24 @@ make clean-db   # elimina la base de datos — BORRA TODO, sin preguntar
 
 ```
 ME/
-├── ME-Init.md         ← contexto de sesión para el agente
-├── vault/             ← generado en onboarding, copiar a Obsidian
+├── ME-Init.md                  ← contexto de sesión para el agente
+├── vault/                      ← generado en onboarding, copiar a Obsidian
 │   ├── AGENT-IDENTITY.md
 │   ├── USER-PROFILE.md
 │   └── HOW-TO-TALK.md
-├── backend/           ← Go 1.21+, SQLite+FTS5, REST API
-├── frontend/          ← Next.js 16, Tailwind, React Three Fiber
-├── mcp/               ← servidor MCP (me-mcp.exe)
-└── docs/              ← API.md, EVASPHERE.md, ONBOARDING.md
+├── backend/                    ← Go 1.21+, SQLite+FTS5, REST API
+├── frontend/
+│   └── app/
+│       ├── components/
+│       │   ├── sphere/
+│       │   │   ├── EvaSphere.tsx      ← shader 3D (Classic Perlin 4D)
+│       │   │   ├── BinauralEngine.ts  ← generador de binaural beats
+│       │   │   └── MusicPlayer.tsx    ← player + canvas + glow ambiente
+│       │   └── onboarding/            ← flujo de onboarding cinematográfico
+│       └── context/
+│           └── SphereContext.tsx      ← estados de la esfera + audioRef
+├── mcp/                        ← servidor MCP (me-mcp.exe)
+└── docs/                       ← API.md, EVASPHERE.md, ONBOARDING.md
 ```
 
 ---

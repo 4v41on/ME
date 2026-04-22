@@ -270,6 +270,36 @@ func SaveOnboardingMemories(db *sql.DB, entries []models.ProfileEntry) error {
 	return nil
 }
 
+// Reset handles DELETE /api/profile.
+// Borra todos los datos de perfil y las memorias plantadas por el onboarding
+// para que el usuario pueda repetir el proceso desde cero.
+func (h *ProfileHandler) Reset(w http.ResponseWriter, r *http.Request) {
+	tx, err := h.db.Begin()
+	if err != nil {
+		httpError(w, "transaction failed", http.StatusInternalServerError)
+		return
+	}
+
+	if _, err := tx.Exec("DELETE FROM profile"); err != nil {
+		tx.Rollback()
+		httpError(w, "delete profile failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Borrar memorias generadas por onboarding (perfil + seeds de arquetipo)
+	if _, err := tx.Exec(`DELETE FROM memories WHERE category IN ('perfil', 'reflexion') AND JSON_EXTRACT(tags, '$[1]') IN ('onboarding', 'seed')`); err != nil {
+		// No fatal — puede que no existan o la query FTS5 varíe
+		_ = err
+	}
+
+	if err := tx.Commit(); err != nil {
+		httpError(w, "commit failed", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "reset": true})
+}
+
 // ensure fmt is used
 var _ = fmt.Sprintf
 

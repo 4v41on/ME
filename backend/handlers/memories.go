@@ -56,6 +56,13 @@ func (h *MemoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 		ID: id, Category: req.Category, Title: req.Title,
 		Content: req.Content, CreatedAt: now, UpdatedAt: now,
 	}
+
+	// Notificar a clientes SSE
+	Bus.Publish(SphereEvent{
+		Type:    EventMemorySaved,
+		Payload: map[string]string{"id": id, "category": req.Category, "title": req.Title},
+	})
+
 	writeJSON(w, http.StatusCreated, m)
 }
 
@@ -185,6 +192,7 @@ func (h *MemoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	Bus.Publish(SphereEvent{Type: EventMemoryDeleted, Payload: map[string]string{"id": id}})
 	writeJSON(w, http.StatusOK, map[string]string{"message": "memory deleted"})
 }
 
@@ -215,7 +223,9 @@ func (h *MemoryHandler) Search(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	writeJSON(w, http.StatusOK, models.SearchResponse{Results: scanMemories(rows)})
+	results := scanMemories(rows)
+	Bus.Publish(SphereEvent{Type: EventSearched, Payload: map[string]any{"query": q, "count": len(results)}})
+	writeJSON(w, http.StatusOK, models.SearchResponse{Results: results})
 }
 
 // --- helpers ---
