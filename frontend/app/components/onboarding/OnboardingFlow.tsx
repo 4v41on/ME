@@ -6,6 +6,7 @@ import { NamingScreen } from "./NamingScreen";
 import { ArchetypeScreen } from "./ArchetypeScreen";
 import { QuestionScreen } from "./QuestionScreen";
 import { SummaryScreen } from "./SummaryScreen";
+import { AwaitingOpencode } from "./AwaitingOpencode";
 import { QUESTIONS } from "./questions";
 import { getProfile, completeOnboarding } from "@/app/lib/api";
 import { useSphere } from "@/app/context/SphereContext";
@@ -15,7 +16,7 @@ const MusicPlayer = dynamic(
   { ssr: false }
 );
 
-type Stage = "loading" | "naming" | "archetype" | "questions" | "summary" | "done";
+type Stage = "loading" | "naming" | "archetype" | "questions" | "summary" | "awaiting" | "done";
 
 interface Props {
   children: React.ReactNode;
@@ -31,6 +32,7 @@ const GLOW_BY_STATE: Record<string, { color: string; opacity: number }> = {
   remembering: { color: "#00d4ff", opacity: 0.10 },
   born:        { color: "#ffffff", opacity: 0.0  }, // la esfera ya es visible
   alive:       { color: "#a855f7", opacity: 0.0  },
+  awaiting:    { color: "#a855f7", opacity: 0.0  },
   memory_saved:{ color: "#00d4ff", opacity: 0.0  },
 };
 
@@ -111,6 +113,11 @@ export function OnboardingFlow({ children }: Props) {
   };
 
   const handleComplete = () => {
+    // SummaryScreen → pantalla puente (segundo onboarding con opencode)
+    setStage("awaiting");
+  };
+
+  const handleEnterSystem = () => {
     setSphereVisible(true);
     setSphereState("alive");
     setStage("done");
@@ -168,8 +175,8 @@ export function OnboardingFlow({ children }: Props) {
             </div>
           )}
 
-          {/* Archetype / Questions / Summary — esfera visible en summary, oculta antes */}
-          {(stage === "archetype" || stage === "questions" || stage === "summary") && (
+          {/* Archetype / Questions / Summary / Awaiting — esfera visible en summary+awaiting */}
+          {(stage === "archetype" || stage === "questions" || stage === "summary" || stage === "awaiting") && (
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-sm px-6 pt-20 pb-8">
               {stage === "archetype" && (
                 <ArchetypeScreen aiName={aiName} onChosen={handleArchetype} />
@@ -187,6 +194,12 @@ export function OnboardingFlow({ children }: Props) {
                   aiName={aiName}
                   answers={{ ...answers, archetype }}
                   onComplete={handleComplete}
+                />
+              )}
+              {stage === "awaiting" && (
+                <AwaitingOpencode
+                  aiName={aiName}
+                  onEnter={handleEnterSystem}
                 />
               )}
             </div>

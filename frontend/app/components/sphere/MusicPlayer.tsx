@@ -38,8 +38,6 @@ export function MusicPlayer() {
   const lastProgressUpdate = useRef(0);
   // Indicador de amplitud en vivo — DOM directo, sin re-renders
   const ampDotRef = useRef<HTMLSpanElement>(null);
-  // Glow ambiente detrás de la esfera — pulsa con el audio
-  const glowRef = useRef<HTMLDivElement>(null);
 
   // Refs que el RAF puede leer sin re-crear el loop (evita stale closure)
   const activePresetRef = useRef<BinauralPreset | null>(null);
@@ -63,17 +61,6 @@ export function MusicPlayer() {
         audioRef.current = fileEngineRef.current.sample();
       } else {
         audioRef.current = { amplitude: 0, frequency: 0, raw: new Uint8Array(0) as Uint8Array<ArrayBuffer> };
-      }
-
-      // Glow ambiente — color del preset, intensidad con el beat
-      if (glowRef.current) {
-        const a = audioRef.current.amplitude;
-        const dotColor = activePresetRef.current
-          ? BINAURAL_PRESETS[activePresetRef.current].dotColor
-          : "#a855f7";
-        const intensity = activePresetRef.current ? 0.12 + a * 0.18 : 0.06;
-        glowRef.current.style.background =
-          `radial-gradient(ellipse 60% 55% at 50% 50%, ${dotColor}${Math.round(intensity * 255).toString(16).padStart(2,"0")} 0%, transparent 70%)`;
       }
 
       // Actualizar indicador visual en vivo sin disparar re-renders
@@ -157,13 +144,6 @@ export function MusicPlayer() {
 
   return (
     <div className="absolute inset-0">
-      {/* Glow ambiente — pulsa con el audio, detrás de todo */}
-      <div
-        ref={glowRef}
-        className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse 60% 55% at 50% 50%, #a855f710 0%, transparent 70%)" }}
-      />
-
       {/* Canvas esfera */}
       <div
         className="absolute inset-0 transition-opacity duration-[2000ms] ease-in"

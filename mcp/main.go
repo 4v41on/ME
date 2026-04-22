@@ -153,7 +153,7 @@ var tools = []Tool{
 	},
 	{
 		Name:        "abrakadabra",
-		Description: "Palabra mágica de activación. Cuando el usuario escriba 'abrakadabra', llama esta herramienta — carga el contexto completo del sistema: ME-Init.md + perfil del usuario + perfil del agente. Si la Fase 2 del onboarding está pendiente, retorna instrucciones para iniciarla.",
+		Description: "ACTIVACIÓN DE SESIÓN. Debes llamar esta herramienta INMEDIATAMENTE cuando el usuario escriba la palabra 'abrakadabra', antes de responder con texto. Carga el contexto completo: ME-Init.md + vault CAG + perfil del usuario + perfil del agente. Si la Fase 2 del onboarding está pendiente, retorna las instrucciones exactas para iniciarla. No respondas al usuario hasta haber llamado este tool y leído su resultado.",
 		InputSchema: InputSchema{
 			Type:       "object",
 			Properties: map[string]Property{},
