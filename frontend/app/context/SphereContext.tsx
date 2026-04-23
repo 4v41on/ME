@@ -43,6 +43,9 @@ interface SphereContextValue {
   // audioRef — fuente única de verdad para datos de audio
   // MusicPlayer escribe aquí; EvaSphere lee desde useFrame
   audioRef: MutableRefObject<AudioData>;
+  // quality — "high" (full) | "lite" (optimizado para PC de prueba)
+  quality: "high" | "lite";
+  setQuality: (q: "high" | "lite") => void;
   setSphereState: (state: SphereState, durationMs?: number) => void;
   setSphereVisible: (v: boolean) => void;
   incrementGrowth: () => void;
@@ -50,13 +53,25 @@ interface SphereContextValue {
 
 const SphereContext = createContext<SphereContextValue | null>(null);
 
+function getInitialQuality(): "high" | "lite" {
+  if (typeof window === "undefined") return "high";
+  const stored = localStorage.getItem("me_quality");
+  return stored === "lite" ? "lite" : "high";
+}
+
 export function SphereProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SphereState>("dormant");
   const [growthLevel, setGrowthLevel] = useState(0);
   const [sphereVisible, setSphereVisible] = useState(false);
+  const [quality, setQualityState] = useState<"high" | "lite">(getInitialQuality);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // audioRef compartido — único, no recrea entre renders
   const audioRef = useRef<AudioData>(SILENT_AUDIO);
+
+  const setQuality = useCallback((q: "high" | "lite") => {
+    setQualityState(q);
+    if (typeof window !== "undefined") localStorage.setItem("me_quality", q);
+  }, []);
 
   const params: SphereParams = {
     ...STATE_PARAMS[state],
@@ -81,6 +96,7 @@ export function SphereProvider({ children }: { children: ReactNode }) {
   return (
     <SphereContext.Provider value={{
       state, params, growthLevel, sphereVisible, audioRef,
+      quality, setQuality,
       setSphereState, setSphereVisible, incrementGrowth,
     }}>
       {children}

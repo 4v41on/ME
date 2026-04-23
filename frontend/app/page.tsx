@@ -6,6 +6,7 @@ import { GlitchText } from "@/app/components/ui/GlitchText";
 import { TriggerButton } from "@/app/components/ui/TriggerButton";
 import { SlideOverPanel } from "@/app/components/ui/SlideOverPanel";
 import { ChatPanel } from "@/app/components/ui/ChatPanel";
+import { SphereDebugPanel } from "@/app/components/debug/SphereDebugPanel";
 import { getProfile } from "@/app/lib/api";
 import { useSphereEvents } from "@/app/hooks/useSphereEvents";
 import { useSphere } from "@/app/context/SphereContext";
@@ -24,8 +25,21 @@ interface Profile {
 export default function Home() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const { setSphereState } = useSphere();
+  const { setSphereState, quality, setQuality } = useSphere();
+
+  // Tecla D — toggle del panel de debug
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "d" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const tag = (e.target as HTMLElement).tagName;
+        if (tag !== "INPUT" && tag !== "TEXTAREA") setDebugOpen(o => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useSphereEvents();
 
@@ -51,11 +65,25 @@ export default function Home() {
       <MusicPlayer />
 
       {/* LAYER 2 — Logo top-left */}
-      <div className="fixed top-6 left-6 z-30 select-none">
+      <div className="fixed top-6 left-6 z-30 select-none flex items-center gap-3">
         <GlitchText
           text="𒈨 ME"
           className="font-mono text-sm text-[#fafafa] tracking-widest uppercase"
         />
+        {/* Toggle de calidad — visible en producción para pruebas en PC test */}
+        <button
+          onClick={() => setQuality(quality === "lite" ? "high" : "lite")}
+          className="font-mono text-[9px] uppercase tracking-widest px-1.5 py-0.5 transition-colors"
+          style={{
+            border: quality === "lite"
+              ? "1px solid rgba(0,212,255,0.4)"
+              : "1px solid rgba(255,255,255,0.06)",
+            color: quality === "lite" ? "#00d4ff" : "#27272a",
+          }}
+          title={quality === "lite" ? "Modo lite activo — clic para high" : "Clic para activar modo lite"}
+        >
+          {quality}
+        </button>
       </div>
 
       {/* LAYER 3 — Agent status top-right */}
@@ -104,6 +132,9 @@ export default function Home() {
         }}
         agentName={profile?.agentName}
       />
+
+      {/* LAYER 7 — Debug panel (side-left, tecla D) */}
+      <SphereDebugPanel isOpen={debugOpen} onClose={() => setDebugOpen(false)} />
     </div>
   );
 }

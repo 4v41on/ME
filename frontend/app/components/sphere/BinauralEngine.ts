@@ -173,11 +173,6 @@ export class BinauralEngine {
     // colorIndex normalizado [0,1] — identifica el preset en el shader
     const frequency = cfg.colorIndex;
 
-    // FFT opcional para compatibilidad (no la usamos para amplitud)
-    if (this.analyser) {
-      this.analyser.getByteFrequencyData(this.dataArray);
-    }
-
     return { amplitude, frequency, raw: this.dataArray };
   }
 

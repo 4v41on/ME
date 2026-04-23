@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { OnboardingFlow } from "@/app/components/onboarding/OnboardingFlow";
 import { SphereProvider } from "@/app/context/SphereContext";
+import { SphereDebugProvider } from "@/app/context/SphereDebugContext";
 import { CustomCursor } from "@/app/components/ui/CustomCursor";
 
 const geistSans = Geist({
@@ -28,8 +29,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="h-full bg-black text-[#fafafa] antialiased overflow-hidden">
         <SphereProvider>
-          <CustomCursor />
-          <OnboardingFlow>{children}</OnboardingFlow>
+          <SphereDebugProvider>
+            <CustomCursor />
+            <OnboardingFlow>{children}</OnboardingFlow>
+          </SphereDebugProvider>
         </SphereProvider>
       </body>
     </html>

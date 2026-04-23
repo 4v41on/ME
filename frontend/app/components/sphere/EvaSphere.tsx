@@ -4,6 +4,7 @@ import { useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { useSphere } from "@/app/context/SphereContext";
+import { useSphereDebug } from "@/app/context/SphereDebugContext";
 import { BINAURAL_PRESETS } from "./BinauralEngine";
 
 // Classic 4D Perlin Noise — idéntico al de vo1d, probado en producción
@@ -77,6 +78,9 @@ float cnoise(vec4 P){
 const VERTEX_SHADER = `
 uniform float uTime;
 uniform float uFrequency;
+uniform float uLiteMode;
+uniform float uAmplitude;
+uniform float uMicroAmplitude;
 uniform vec3  uPrimaryColor;
 uniform vec3  uSecondaryColor;
 
@@ -86,10 +90,8 @@ varying vec3 vPosition;
 ${cnoiseGLSL}
 
 void main(){
-  // Capa base — movimiento orgánico principal
-  float d = cnoise(vec4(normal * uFrequency, uTime)) * 0.35;
-  // Micro-capa — textura de piel viva, frecuencia alta, amplitud mínima
-  float micro = cnoise(vec4(normal * uFrequency * 3.5, uTime * 1.8 + 4.2)) * 0.04;
+  float d     = cnoise(vec4(normal * uFrequency, uTime)) * uAmplitude;
+  float micro = (1.0 - uLiteMode) * cnoise(vec4(normal * uFrequency * 3.5, uTime * 1.8 + 4.2)) * uMicroAmplitude;
 
   float total = d + micro;
   vec4 modelPosition = modelMatrix * vec4(position, 1.0);
@@ -102,20 +104,45 @@ void main(){
 
 const FRAGMENT_SHADER = `
 uniform float uAudioLevel;
+uniform float uLiteMode;
+uniform float uFresnelPower;
+uniform float uGlowBase;
+uniform float uGlowAudio;
+uniform float uSpecPower;
+uniform float uSpecIntensity;
+uniform float uWhitening;
+uniform float uChromaAb;
 
 varying vec3 vColor;
 varying vec3 vPosition;
 
 void main(){
+  // Modo lite — fragmento mínimo
+  if (uLiteMode > 0.5) {
+    gl_FragColor = vec4(vColor * 1.2, 0.92);
+    return;
+  }
+
   vec3  viewDir = normalize(cameraPosition - vPosition);
   vec3  n       = normalize(cross(dFdx(vPosition), dFdy(vPosition)));
-  float fresnel = pow(1.0 - max(dot(viewDir, n), 0.0), 3.0);
 
-  vec3 col  = mix(vColor, vec3(1.0, 1.0, 1.0), uAudioLevel * fresnel * 0.4);
+  // Fresnel base
+  float fresnel = pow(1.0 - max(dot(viewDir, n), 0.0), uFresnelPower);
+
+  // Aberración cromática en el rim — split RGB por canal
+  vec3 viewDirR = normalize(viewDir + vec3(uChromaAb, 0.0, 0.0));
+  vec3 viewDirB = normalize(viewDir - vec3(uChromaAb, 0.0, 0.0));
+  float fresnelR = pow(1.0 - max(dot(viewDirR, n), 0.0), uFresnelPower);
+  float fresnelB = pow(1.0 - max(dot(viewDirB, n), 0.0), uFresnelPower);
+  // Con uChromaAb=0 los tres son iguales (sin efecto). Con uChromaAb>0 el glow
+  // se separa en R/G/B creando el halo RGB-split en el borde de la esfera.
+  vec3 rimFresnel = vec3(fresnelR, fresnel, fresnelB);
+
+  vec3 col  = mix(vColor, vec3(1.0, 1.0, 1.0), uAudioLevel * fresnel * uWhitening);
   vec3 r    = normalize(reflect(-normalize(vec3(1.0,1.0,1.0)), n));
-  vec3 glow = vColor * fresnel * (2.8 + uAudioLevel * 4.0);
+  vec3 glow = vColor * rimFresnel * (uGlowBase + uAudioLevel * uGlowAudio);
   vec3 final = col * (vec3(0.9) + max(dot(viewDir, n), 0.0))
-             + vec3(pow(max(dot(viewDir, r), 0.0), 6.0)) * 1.5
+             + vec3(pow(max(dot(viewDir, r), 0.0), uSpecPower)) * uSpecIntensity
              + glow;
 
   gl_FragColor = vec4(final, 0.92 + fresnel * 0.08);
@@ -133,20 +160,30 @@ const PRESET_COLORS: Record<string, { primary: number; secondary: number }> = {
 function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
 
 export function EvaSphere() {
-  // shaderRef — acceso directo al material, igual que EvaAvatar en vo1d
   const shaderRef  = useRef<THREE.ShaderMaterial>(null);
-  const { audioRef } = useSphere();
+  const { audioRef, quality, setQuality } = useSphere();
+  const { params, fpsRef } = useSphereDebug();
 
-  // Uniforms en useRef — referencia estable, nunca se recrea
+  // Uniforms — todos los valores del debug panel se escriben aquí cada frame
   const uniforms = useRef({
-    uTime:          { value: 0 },
-    uFrequency:     { value: 1.5 },
-    uAudioLevel:    { value: 0.15 },
-    uPrimaryColor:  { value: new THREE.Color(0x4c1d95) },
-    uSecondaryColor:{ value: new THREE.Color(0xa855f7) },
+    uTime:           { value: 0 },
+    uFrequency:      { value: 1.5 },
+    uAudioLevel:     { value: 0.15 },
+    uLiteMode:       { value: quality === "lite" ? 1.0 : 0.0 },
+    uAmplitude:      { value: params.noiseAmplitude },
+    uMicroAmplitude: { value: params.microAmplitude },
+    uFresnelPower:   { value: params.fresnelPower },
+    uGlowBase:       { value: params.glowBase },
+    uGlowAudio:      { value: params.glowAudio },
+    uSpecPower:      { value: params.specPower },
+    uSpecIntensity:  { value: params.specIntensity },
+    uWhitening:      { value: params.whitening },
+    uChromaAb:       { value: params.chromaAb },
+    uPrimaryColor:   { value: new THREE.Color(0x4c1d95) },
+    uSecondaryColor: { value: new THREE.Color(0xa855f7) },
   });
 
-  // Estado interpolado — todo en refs, cero re-renders
+  // Estado interpolado — refs, cero re-renders
   const tRef         = useRef(0);
   const curFreq      = useRef(1.5);
   const curAudio     = useRef(0.15);
@@ -155,13 +192,31 @@ export function EvaSphere() {
   const tgtPrimary   = useRef(new THREE.Color(0x4c1d95));
   const tgtSecondary = useRef(new THREE.Color(0xa855f7));
 
+  // Auto-detección de calidad (si no hay preferencia guardada)
+  const fpsWindow    = useRef<number[]>([]);
+  const fpsChecked   = useRef(false);
+  const hasStoredPref = typeof window !== "undefined" && localStorage.getItem("me_quality") !== null;
+
   useFrame((_s, delta) => {
-    if (!shaderRef.current) return;
+    if (!shaderRef.current || delta <= 0) return;
+
+    // FPS rolling — actualiza el ref del debug panel (30 frames de ventana)
+    const instantFPS = Math.min(1 / delta, 120);
+    fpsWindow.current.push(instantFPS);
+    if (fpsWindow.current.length > 30) fpsWindow.current.shift();
+    fpsRef.current = Math.round(
+      fpsWindow.current.reduce((a, b) => a + b) / fpsWindow.current.length
+    );
+
+    // Auto-calidad al arrancar
+    if (!fpsChecked.current && !hasStoredPref && fpsWindow.current.length >= 90) {
+      fpsChecked.current = true;
+      if (fpsRef.current < 40) setQuality("lite");
+    }
 
     const audio    = audioRef.current;
     const hasAudio = audio.amplitude > 0.05;
 
-    // Preset activo por colorIndex
     let presetKey = "theta";
     if (hasAudio) {
       const ci = audio.frequency;
@@ -172,47 +227,55 @@ export function EvaSphere() {
       else                 presetKey = "gamma";
     }
 
-    // Colores target
     const colors = PRESET_COLORS[presetKey];
     tgtPrimary.current.setHex(colors.primary);
     tgtSecondary.current.setHex(colors.secondary);
 
-    // Frecuencia del noise: más alta con presets rápidos
     const tFreq = hasAudio
       ? 1.5 + audio.frequency * 1.5
       : 1.5 + Math.sin(tRef.current * 0.4) * 0.15;
 
-    // Nivel de audio para el glow
     const tAudio = hasAudio
       ? audio.amplitude
       : 0.12 + Math.sin(tRef.current * 0.8) * 0.05;
 
-    // Velocidad del tiempo: preset cuando hay audio, respiración en idle
     const preset = BINAURAL_PRESETS[presetKey as keyof typeof BINAURAL_PRESETS];
-    const tSpeed = hasAudio
-      ? 0.6 + preset.sphereSpeed * 2.0   // delta=1.0 … gamma=3.8
-      : 0.6;                             // idle: fluido y orgánico
+    const tSpeed = hasAudio ? 0.6 + preset.sphereSpeed * 2.0 : 0.6;
 
-    // Lerp
     curFreq.current  = lerp(curFreq.current,  tFreq,  0.05);
     curAudio.current = lerp(curAudio.current, tAudio, 0.1);
     curPrimary.current.lerp(tgtPrimary.current, 0.03);
     curSecondary.current.lerp(tgtSecondary.current, 0.03);
-
-    // Tiempo acumulado
     tRef.current += delta * tSpeed;
 
-    // Escribir directo al material — patrón EvaAvatar
-    shaderRef.current.uniforms.uTime.value      = tRef.current;
-    shaderRef.current.uniforms.uFrequency.value = curFreq.current;
+    // Uniforms de animación
+    shaderRef.current.uniforms.uTime.value       = tRef.current;
+    shaderRef.current.uniforms.uFrequency.value  = curFreq.current;
     shaderRef.current.uniforms.uAudioLevel.value = curAudio.current;
+    shaderRef.current.uniforms.uLiteMode.value   = quality === "lite" ? 1.0 : 0.0;
     shaderRef.current.uniforms.uPrimaryColor.value.copy(curPrimary.current);
     shaderRef.current.uniforms.uSecondaryColor.value.copy(curSecondary.current);
+
+    // Uniforms del debug panel — se aplican en tiempo real cada frame
+    shaderRef.current.uniforms.uAmplitude.value      = params.noiseAmplitude;
+    shaderRef.current.uniforms.uMicroAmplitude.value = params.microAmplitude;
+    shaderRef.current.uniforms.uFresnelPower.value   = params.fresnelPower;
+    shaderRef.current.uniforms.uGlowBase.value       = params.glowBase;
+    shaderRef.current.uniforms.uGlowAudio.value      = params.glowAudio;
+    shaderRef.current.uniforms.uSpecPower.value      = params.specPower;
+    shaderRef.current.uniforms.uSpecIntensity.value  = params.specIntensity;
+    shaderRef.current.uniforms.uWhitening.value      = params.whitening;
+    shaderRef.current.uniforms.uChromaAb.value       = params.chromaAb;
+
+    // Wireframe — prop directa en el material
+    shaderRef.current.wireframe = params.wireframe;
   });
+
+  const subdivisions = params.subdivisions;
 
   return (
     <mesh>
-      <icosahedronGeometry args={[0.75, 80]} />
+      <icosahedronGeometry args={[0.75, subdivisions]} />
       <shaderMaterial
         ref={shaderRef}
         vertexShader={VERTEX_SHADER}

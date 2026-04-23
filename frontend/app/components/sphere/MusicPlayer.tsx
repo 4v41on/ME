@@ -1,11 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
+import * as THREE from "three";
 import { EvaSphere } from "./EvaSphere";
 import { AudioEngine } from "./AudioEngine";
 import { BinauralEngine, BINAURAL_PRESETS, type BinauralPreset } from "./BinauralEngine";
 import { useSphere } from "@/app/context/SphereContext";
+import { useSphereDebug } from "@/app/context/SphereDebugContext";
+
+/** Configura el WebGLRenderer desde dentro del Canvas — tone mapping + exposure en tiempo real */
+function RendererConfig() {
+  const { gl } = useThree();
+  const { params } = useSphereDebug();
+  gl.toneMapping = params.acesToneMapping ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
+  gl.toneMappingExposure = params.exposure;
+  return null;
+}
 
 type Mode = "binaural" | "file";
 
@@ -19,7 +30,7 @@ type Mode = "binaural" | "file";
  * File: arranca al seleccionar track.
  */
 export function MusicPlayer() {
-  const { sphereVisible, audioRef } = useSphere();
+  const { sphereVisible, audioRef, quality } = useSphere();
 
   const [tracks, setTracks] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -42,6 +53,8 @@ export function MusicPlayer() {
   // Refs que el RAF puede leer sin re-crear el loop (evita stale closure)
   const activePresetRef = useRef<BinauralPreset | null>(null);
   const modeRef = useRef<Mode>("binaural");
+  const qualityRef = useRef(quality);
+  const rafFrameCount = useRef(0);
 
   useEffect(() => {
     fetch("/api/playlist")
@@ -50,9 +63,14 @@ export function MusicPlayer() {
       .catch(() => {});
   }, []);
 
+  // Sync quality ref para que el RAF lo lea sin stale closure
+  useEffect(() => { qualityRef.current = quality; }, [quality]);
+
   // Loop de audio — escribe en audioRef compartido del context
   useEffect(() => {
     const tick = (ts: number) => {
+      rafFrameCount.current++;
+
       // Lee desde refs — no stale closure aunque el effect no se re-cree
       if (activePresetRef.current) {
         const d = binauralEngineRef.current.sample();
@@ -63,8 +81,11 @@ export function MusicPlayer() {
         audioRef.current = { amplitude: 0, frequency: 0, raw: new Uint8Array(0) as Uint8Array<ArrayBuffer> };
       }
 
+      // En modo lite: actualizar DOM solo cada 2 frames (reduce repaints 50%)
+      const skipDomUpdate = qualityRef.current === "lite" && rafFrameCount.current % 2 !== 0;
+
       // Actualizar indicador visual en vivo sin disparar re-renders
-      if (ampDotRef.current) {
+      if (!skipDomUpdate && ampDotRef.current) {
         const a = audioRef.current.amplitude;
         const size = 4 + a * 10; // 4px → 14px según amplitud
         const dotColor = activePresetRef.current
@@ -152,8 +173,10 @@ export function MusicPlayer() {
         <Canvas
           className="absolute inset-0"
           camera={{ position: [0, 0, 3.2], fov: 42 }}
-          gl={{ antialias: true, alpha: true }}
+          dpr={quality === "lite" ? 1 : [1, 2]}
+          gl={{ antialias: quality !== "lite", alpha: true }}
         >
+          <RendererConfig />
           <ambientLight intensity={0.08} />
           <EvaSphere />
         </Canvas>
