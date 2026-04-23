@@ -79,7 +79,7 @@ install: check-go
 ## Necesario una vez antes de conectar opencode/Claude al sistema.
 build-mcp: check-go
 	@echo "→ Compilando me-mcp.exe..."
-	cd mcp && CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" go build -o me-mcp.exe .
+	cd mcp && go build -o me-mcp.exe .
 	@echo "✓ mcp/me-mcp.exe listo."
 	@echo ""
 	@echo "  Configura tu cliente MCP apuntando a:"
@@ -97,9 +97,9 @@ run: _print_ports
 ## build — compila backend + MCP para producción
 build: check-go _print_ports
 	@echo "→ Compilando backend..."
-	cd backend && CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" go build -o me-backend.exe .
+	cd backend && go build -o me-backend.exe .
 	@echo "→ Compilando MCP..."
-	cd mcp && CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" go build -o me-mcp.exe .
+	cd mcp && go build -o me-mcp.exe .
 	@echo "→ Compilando frontend..."
 	cd frontend && NEXT_PUBLIC_API_URL=$(NEXT_PUBLIC_API_URL) npm run build
 	@echo "✓ Build completo."
@@ -124,7 +124,7 @@ _backend:
 	  ME_DB_PATH=$(ME_DB_PATH) \
 	  OLLAMA_URL=$(OLLAMA_URL) \
 	  OLLAMA_MODEL=$(OLLAMA_MODEL) \
-	  CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" go run .
+	  go run .
 
 _frontend:
 	cd frontend && NEXT_PUBLIC_API_URL=$(NEXT_PUBLIC_API_URL) npm run dev
