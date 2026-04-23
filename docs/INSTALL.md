@@ -12,15 +12,16 @@ Instala estas herramientas antes de continuar. Sin ellas el sistema no compila.
 |-------------|----------|-------|
 | Go 1.21+ | backend + MCP | https://go.dev/dl/ — descarga el `.msi` |
 | Node.js 18+ LTS | frontend | https://nodejs.org/ — descarga el `.msi` |
-| TDM-GCC | SQLite con Go (CGO) | https://jmeubank.github.io/tdm-gcc/ |
 | Git | clonar el repo | https://git-scm.com/ |
+
+No se necesita GCC ni ningún compilador C.
 
 **Después de instalar cada herramienta: cierra la terminal y vuelve a abrirla.**
 El PATH no se actualiza en terminales ya abiertas.
 
 Verifica que todo esté listo:
-```bash
-go version && node --version && npm --version && gcc --version
+```powershell
+go version && node --version && npm --version
 ```
 
 Si algo falla aquí, no sigas.
@@ -46,31 +47,26 @@ make run
 
 Abre **http://localhost:3000** — deberías ver el onboarding.
 
-### Sin make (Windows)
+### Windows (PowerShell)
 
-Si `make` no está disponible:
-```bash
-winget install GnuWin32.Make
-```
-
-O instala manualmente en dos terminales:
+En **dos terminales** separadas:
 
 **Terminal 1 — backend:**
-```bash
-cd ME/backend
-set CGO_CFLAGS=-DSQLITE_ENABLE_FTS5 && set ME_PORT=8082 && set ME_DB_PATH=./me.db && go run .
+```powershell
+cd ME\backend
+go run .
 ```
 
 **Terminal 2 — frontend:**
-```bash
-cd ME/frontend
-set NEXT_PUBLIC_API_URL=http://localhost:8082 && npm run dev
+```powershell
+cd ME\frontend
+npm run dev
 ```
 
-**Compilar MCP:**
-```bash
-cd ME/mcp
-set CGO_CFLAGS=-DSQLITE_ENABLE_FTS5 && go build -o me-mcp.exe .
+**Compilar MCP (una sola vez):**
+```powershell
+cd ME\mcp
+go build -o me-mcp.exe .
 ```
 
 ---

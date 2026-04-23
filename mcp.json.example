@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "me": {
+      "command": "ME_PATH/mcp/me-mcp.exe",
+      "env": {
+        "ME_DB_PATH":    "ME_PATH/backend/me.db",
+        "ME_VAULT_PATH": "ME_PATH/vault",
+        "ME_INIT_PATH":  "ME_PATH/ME-Init.md"
+      }
+    }
+  }
+}

@@ -43,16 +43,15 @@ La interfaz es secundaria. El flujo principal es **opencode o Claude + Obsidian 
 |-------------|----------|------------|
 | Go 1.21+ | backend + MCP | https://go.dev/dl/ |
 | Node.js 18+ LTS | frontend | https://nodejs.org/ |
-| gcc / TDM-GCC | SQLite con Go (CGO) | https://jmeubank.github.io/tdm-gcc/ |
 | Git | clonar el repo | https://git-scm.com/ |
 
 **Windows:** descarga el `.msi` de Go y Node.js, ejecútalos, cierra la terminal y vuelve a abrirla. Sí, hay que cerrarla. No, no funciona sin cerrarla.
 
-**gcc:** TDM-GCC es el más sencillo en Windows — instala y reinicia. Sin esto SQLite no compila y el backend no existe.
+No se necesita GCC ni ningún compilador C — el sistema usa SQLite puro en Go.
 
 Cuando tengas todo, verifica:
 ```bash
-go version && node --version && npm --version && gcc --version
+go version && node --version && npm --version
 ```
 
 Si algo falla aquí, no sigas. El sistema te lo agradecerá.
@@ -80,31 +79,26 @@ make run
 
 Abre **http://localhost:3000** y empieza.
 
-### Windows sin make
+### Windows (PowerShell)
 
-Si `make` no está disponible, instálalo con:
-```bash
-winget install GnuWin32.Make
-```
-
-O corre los comandos manualmente en **dos terminales**:
+En **dos terminales** separadas:
 
 **Terminal 1 — backend:**
-```bash
-cd ME/backend
-set CGO_CFLAGS=-DSQLITE_ENABLE_FTS5 && set ME_PORT=8082 && set ME_DB_PATH=./me.db && go run .
+```powershell
+cd ME\backend
+go run .
 ```
 
 **Terminal 2 — frontend:**
-```bash
-cd ME/frontend
-set NEXT_PUBLIC_API_URL=http://localhost:8082 && npm run dev
+```powershell
+cd ME\frontend
+npm run dev
 ```
 
-**Compilar el MCP manualmente:**
-```bash
-cd ME/mcp
-set CGO_CFLAGS=-DSQLITE_ENABLE_FTS5 && go build -o me-mcp.exe .
+**Compilar el MCP (una sola vez):**
+```powershell
+cd ME\mcp
+go build -o me-mcp.exe .
 ```
 
 ---
@@ -247,13 +241,21 @@ Si no tienes Ollama configurado, el tab de chat muestra instrucciones en lugar d
 
 ## 🛠 Comandos
 
-```bash
-make setup      # primera vez: verifica deps + crea .env + instala
-make build-mcp  # compila el servidor MCP (una sola vez)
-make run        # backend + frontend en paralelo
-make build      # compila todo para producción
-make clean      # elimina artefactos (no toca la DB)
-make clean-db   # elimina la base de datos — BORRA TODO, sin preguntar
+```powershell
+# Backend
+cd ME\backend && go run .
+
+# Frontend
+cd ME\frontend && npm run dev
+
+# MCP (compilar una sola vez)
+cd ME\mcp && go build -o me-mcp.exe .
+
+# Limpiar binarios (no toca la DB)
+Remove-Item ME\mcp\me-mcp.exe -ErrorAction SilentlyContinue
+
+# Eliminar base de datos — BORRA TODO, sin preguntar
+Remove-Item ME\backend\me.db -ErrorAction SilentlyContinue
 ```
 
 ---

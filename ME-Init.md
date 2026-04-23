@@ -14,10 +14,10 @@ estado: vivo
 
 ME es un ecosistema EVA instalable: backend Go + SQLite/FTS5 + frontend Next.js + EvaSphere + MCP.
 
-**Repo:** `D:/Users/User/Documents/ME/`  
-**DB:** `D:/Users/User/Documents/ME/backend/me.db`  
 **Backend:** `http://localhost:8082`  
-**Frontend:** `http://localhost:3000`
+**Frontend:** `http://localhost:3000`  
+**DB:** `ME/backend/me.db` (relativo al repo clonado)  
+**Vault:** `ME/vault/` — archivos CAG generados por el onboarding
 
 ---
 

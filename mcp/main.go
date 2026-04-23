@@ -33,7 +33,7 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 	"github.com/google/uuid"
 	"io"
 )
@@ -654,7 +654,7 @@ func write(r Response) {
 // ─── DB ───────────────────────────────────────────────────────────────────────
 
 func openDB(path string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", path+"?_journal=WAL&_foreign_keys=on")
+	db, err := sql.Open("sqlite", fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=foreign_keys(ON)", path))
 	if err != nil {
 		return nil, err
 	}

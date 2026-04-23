@@ -5,7 +5,7 @@ import (
 	"embed"
 	"fmt"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 //go:embed schema.sql
@@ -15,7 +15,7 @@ var schemaFS embed.FS
 // It enables WAL mode and foreign keys, then applies the embedded schema.
 func Open(path string) (*sql.DB, error) {
 	// CGO_ENABLED=1 required; go-sqlite3 compiles the C library.
-	db, err := sql.Open("sqlite3", fmt.Sprintf("%s?_journal=WAL&_foreign_keys=on", path))
+	db, err := sql.Open("sqlite", fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=foreign_keys(ON)", path))
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
