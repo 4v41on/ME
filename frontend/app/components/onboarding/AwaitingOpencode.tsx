@@ -123,7 +123,7 @@ export function AwaitingOpencode({ aiName, vaultPath, onEnter }: Props) {
             style={{ background: "rgba(255,255,255,0.03)", borderRadius: 0 }}
           >
             <span className="text-[#52525b] select-none">$ </span>
-            <span className="text-[#d4d4d8]">make build-mcp</span>
+            <span className="text-[#d4d4d8]">cd mcp && go build -o me-mcp.exe .</span>
           </div>
 
           <p className="text-[#71717a] mt-1">2. crea <span className="text-[#a1a1aa]">.mcp.json</span> en tu proyecto:</p>
