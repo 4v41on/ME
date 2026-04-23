@@ -60,46 +60,39 @@ Si algo falla aquí, no sigas. El sistema te lo agradecerá.
 
 ## 🚀 Instalación
 
-*Cuatro comandos. Prometido.*
-
-```bash
-# el inicio de todo
+```powershell
 git clone https://github.com/4v41on/ME.git
 cd ME
-
-# verifica dependencias, crea .env, instala módulos Go y npm
-make setup
-
-# compila el servidor MCP — solo tienes que hacer esto una vez
-make build-mcp
-
-# enciende todo
-make run
 ```
 
-Abre **http://localhost:3000** y empieza.
-
-### Windows (PowerShell)
-
-En **dos terminales** separadas:
-
-**Terminal 1 — backend:**
+**Instalar dependencias:**
 ```powershell
-cd ME\backend
-go run .
-```
-
-**Terminal 2 — frontend:**
-```powershell
-cd ME\frontend
-npm run dev
+cd backend && go mod download && cd ..
+cd mcp && go mod download && cd ..
+cd frontend && npm install && cd ..
 ```
 
 **Compilar el MCP (una sola vez):**
 ```powershell
-cd ME\mcp
+cd mcp
 go build -o me-mcp.exe .
 ```
+
+**Arrancar el sistema** — dos terminales separadas:
+
+```powershell
+# Terminal 1 — backend
+cd ME\backend
+go run .
+```
+
+```powershell
+# Terminal 2 — frontend
+cd ME\frontend
+npm run dev
+```
+
+Abre **http://localhost:3000** y empieza.
 
 ---
 
@@ -143,17 +136,34 @@ Al terminar, `vault/` aparece con tres archivos: el perfil del agente, el tuyo, 
 
 El flujo principal no es el browser — es opencode o Claude Code con el MCP activo. El browser es el dashboard. El MCP es el sistema nervioso.
 
-Crea o edita tu `.mcp.json`:
+Hay un template en `mcp.json.example` en la raíz del repo. Copia los valores y reemplaza `ME_PATH` con la ruta donde clonaste el repo.
+
+**opencode** — edita `~/.config/opencode/opencode.json` y agrega en el bloque `"mcp"`:
+
+```json
+"me": {
+  "type": "local",
+  "command": ["C:\\ruta\\a\\ME\\mcp\\me-mcp.exe"],
+  "environment": {
+    "ME_DB_PATH":    "C:\\ruta\\a\\ME\\backend\\me.db",
+    "ME_VAULT_PATH": "C:\\ruta\\a\\ME\\vault",
+    "ME_INIT_PATH":  "C:\\ruta\\a\\ME\\ME-Init.md"
+  },
+  "enabled": true
+}
+```
+
+**Claude Code** — crea `.mcp.json` en tu carpeta de trabajo:
 
 ```json
 {
   "mcpServers": {
     "me": {
-      "command": "/ruta/absoluta/a/ME/mcp/me-mcp.exe",
+      "command": "C:\\ruta\\a\\ME\\mcp\\me-mcp.exe",
       "env": {
-        "ME_DB_PATH":    "/ruta/absoluta/a/ME/backend/me.db",
-        "ME_VAULT_PATH": "/ruta/absoluta/a/ME/vault",
-        "ME_INIT_PATH":  "/ruta/absoluta/a/ME/ME-Init.md"
+        "ME_DB_PATH":    "C:\\ruta\\a\\ME\\backend\\me.db",
+        "ME_VAULT_PATH": "C:\\ruta\\a\\ME\\vault",
+        "ME_INIT_PATH":  "C:\\ruta\\a\\ME\\ME-Init.md"
       }
     }
   }
