@@ -12,12 +12,17 @@ import (
 type EventType string
 
 const (
-	EventMemorySaved   EventType = "memory_saved"
-	EventMemoryDeleted EventType = "memory_deleted"
-	EventSearched      EventType = "searched"
-	EventPhase2Done    EventType = "phase2_complete"
+	EventMemorySaved    EventType = "memory_saved"
+	EventMemoryDeleted  EventType = "memory_deleted"
+	EventSearched       EventType = "searched"
+	EventPhase2Done     EventType = "phase2_complete"
 	EventOnboardingDone EventType = "onboarding_complete"
-	EventVaultUpdated  EventType = "vault_updated"
+	EventVaultUpdated   EventType = "vault_updated"
+	// Eventos emitidos por el servidor MCP (Claude/OpenCode)
+	EventMCPActive EventType = "mcp_active"
+	EventMCPSave   EventType = "mcp_save"
+	EventMCPSearch EventType = "mcp_search"
+	EventMCPVault  EventType = "mcp_vault"
 )
 
 // SphereEvent es el payload que se envía al frontend.
@@ -65,10 +70,23 @@ func (b *EventBus) Publish(e SphereEvent) {
 	}
 }
 
-// EventsHandler maneja GET /api/events (SSE stream).
+// EventsHandler maneja GET /api/events (SSE stream) y POST /api/internal/event.
 type EventsHandler struct{}
 
 func NewEventsHandler() *EventsHandler { return &EventsHandler{} }
+
+// InternalPublish maneja POST /api/internal/event.
+// Llamado por el servidor MCP (misma máquina) para publicar eventos de esfera.
+// El backend escucha solo en 127.0.0.1 — no requiere autenticación adicional.
+func (h *EventsHandler) InternalPublish(w http.ResponseWriter, r *http.Request) {
+	var evt SphereEvent
+	if err := json.NewDecoder(r.Body).Decode(&evt); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	Bus.Publish(evt)
+	w.WriteHeader(http.StatusNoContent)
+}
 
 func (h *EventsHandler) Stream(w http.ResponseWriter, r *http.Request) {
 	// Headers SSE

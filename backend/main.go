@@ -175,6 +175,15 @@ func main() {
 		events.Stream(w, r)
 	})
 
+	// Endpoint interno — MCP publica eventos de esfera sin pasar por HTTP público
+	mux.HandleFunc("/api/internal/event", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		events.InternalPublish(w, r)
+	})
+
 	// Health check
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

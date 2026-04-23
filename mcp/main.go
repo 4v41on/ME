@@ -25,18 +25,45 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	_ "modernc.org/sqlite"
 	"github.com/google/uuid"
-	"io"
+	_ "modernc.org/sqlite"
 )
+
+// meAPIURL es la URL base del backend de ME.
+// El MCP publica eventos de esfera via /api/internal/event.
+var meAPIURL = func() string {
+	if u := os.Getenv("ME_API_URL"); u != "" {
+		return u
+	}
+	return "http://localhost:8082"
+}()
+
+// publishSphere notifica a la esfera en tiempo real desde el MCP.
+// Fire-and-forget: si el backend no está disponible, se ignora el error.
+func publishSphere(eventType string, payload any) {
+	body, err := json.Marshal(map[string]any{
+		"type":    eventType,
+		"payload": payload,
+	})
+	if err != nil {
+		return
+	}
+	resp, err := http.Post(meAPIURL+"/api/internal/event", "application/json", bytes.NewReader(body))
+	if err == nil {
+		resp.Body.Close()
+	}
+}
 
 // ─── JSON-RPC types ──────────────────────────────────────────────────────────
 
@@ -300,6 +327,7 @@ func callTool(db *sql.DB, id any, name string, args json.RawMessage) {
 			return
 		}
 		toolText(id, fmt.Sprintf("Memoria guardada (id: %s, categoría: %s)", mid, a.Category))
+		go publishSphere("mcp_save", map[string]string{"id": mid, "category": a.Category, "title": a.Title})
 
 	case "search_memory":
 		var a struct{ Query string `json:"query"` }
@@ -339,6 +367,7 @@ func callTool(db *sql.DB, id any, name string, args json.RawMessage) {
 		} else {
 			toolText(id, fmt.Sprintf("%d resultado(s):\n\n%s", count, sb.String()))
 		}
+		go publishSphere("mcp_search", map[string]string{"query": a.Query})
 
 	case "list_memories":
 		var a struct {
@@ -573,6 +602,7 @@ Después de llamar complete_phase2, abrakadabra solo cargará contexto — no ha
 		}
 
 		toolText(id, sb.String())
+		go publishSphere("mcp_active", nil)
 
 	case "complete_phase2":
 		now := time.Now().UTC().Format(time.RFC3339)
@@ -617,6 +647,7 @@ Después de llamar complete_phase2, abrakadabra solo cargará contexto — no ha
 			return
 		}
 		toolText(id, fmt.Sprintf("%s actualizado en %s", a.File, fpath))
+		go publishSphere("mcp_vault", map[string]string{"file": a.File})
 
 	default:
 		writeError(id, -32601, "tool not found: "+name)

@@ -149,71 +149,90 @@ void main(){
 }
 `;
 
+// Colores binaural — activados cuando hay audio de preset
 const PRESET_COLORS: Record<string, { primary: number; secondary: number }> = {
-  delta: { primary: 0x0f0c3a, secondary: 0x6366f1 }, // azul índigo profundo → índigo brillante
-  theta: { primary: 0x2d0a5e, secondary: 0xc084fc }, // violeta oscuro → violeta claro
-  alpha: { primary: 0x4a0a2e, secondary: 0xf472b6 }, // rosa oscuro → rosa brillante
-  beta:  { primary: 0x002a3a, secondary: 0x22d3ee }, // cian oscuro → cian brillante
-  gamma: { primary: 0x3a1a00, secondary: 0xfde68a }, // ámbar oscuro → oro brillante
+  delta: { primary: 0x0f0c3a, secondary: 0x6366f1 },
+  theta: { primary: 0x2d0a5e, secondary: 0xc084fc },
+  alpha: { primary: 0x4a0a2e, secondary: 0xf472b6 },
+  beta:  { primary: 0x002a3a, secondary: 0x22d3ee },
+  gamma: { primary: 0x3a1a00, secondary: 0xfde68a },
+};
+
+// Colores por estado de la esfera — activados en idle (sin binaural)
+const STATE_COLORS: Record<string, { primary: number; secondary: number }> = {
+  dormant:      { primary: 0x020106, secondary: 0x0f0820 }, // casi negro, casi muerto
+  awakening:    { primary: 0x1a0533, secondary: 0x7c3aed }, // violeta despertando
+  listening:    { primary: 0x001520, secondary: 0x0284c7 }, // cian anticipatorio
+  thinking:     { primary: 0x2d0a5e, secondary: 0xa855f7 }, // violeta intenso, activo
+  remembering:  { primary: 0x001c2a, secondary: 0x00d4ff }, // cian profundo, onírico
+  growing:      { primary: 0x1c1000, secondary: 0xd97706 }, // ámbar, expansión
+  born:         { primary: 0x0d0020, secondary: 0xe8d5ff }, // blanco violáceo, clímax
+  alive:        { primary: 0x1a0a2e, secondary: 0xa855f7 }, // violeta vivo, normal
+  memory_saved: { primary: 0x04020a, secondary: 0xa855f7 }, // base, sobreescrito por categoryColor
 };
 
 function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
 
 export function EvaSphere() {
+  const meshRef    = useRef<THREE.Mesh>(null);
   const shaderRef  = useRef<THREE.ShaderMaterial>(null);
-  const { audioRef, quality, setQuality } = useSphere();
-  const { params, fpsRef } = useSphereDebug();
+  const { audioRef, quality, setQuality, state, params, categoryColor } = useSphere();
+  const { params: debugParams, fpsRef } = useSphereDebug();
 
-  // Uniforms — todos los valores del debug panel se escriben aquí cada frame
+  // Uniforms — debug panel + animación, todos escritos en useFrame
   const uniforms = useRef({
     uTime:           { value: 0 },
     uFrequency:      { value: 1.5 },
     uAudioLevel:     { value: 0.15 },
     uLiteMode:       { value: quality === "lite" ? 1.0 : 0.0 },
-    uAmplitude:      { value: params.noiseAmplitude },
-    uMicroAmplitude: { value: params.microAmplitude },
-    uFresnelPower:   { value: params.fresnelPower },
-    uGlowBase:       { value: params.glowBase },
-    uGlowAudio:      { value: params.glowAudio },
-    uSpecPower:      { value: params.specPower },
-    uSpecIntensity:  { value: params.specIntensity },
-    uWhitening:      { value: params.whitening },
-    uChromaAb:       { value: params.chromaAb },
-    uPrimaryColor:   { value: new THREE.Color(0x4c1d95) },
+    uAmplitude:      { value: debugParams.noiseAmplitude },
+    uMicroAmplitude: { value: debugParams.microAmplitude },
+    uFresnelPower:   { value: debugParams.fresnelPower },
+    uGlowBase:       { value: debugParams.glowBase },
+    uGlowAudio:      { value: debugParams.glowAudio },
+    uSpecPower:      { value: debugParams.specPower },
+    uSpecIntensity:  { value: debugParams.specIntensity },
+    uWhitening:      { value: debugParams.whitening },
+    uChromaAb:       { value: debugParams.chromaAb },
+    uPrimaryColor:   { value: new THREE.Color(0x1a0a2e) },
     uSecondaryColor: { value: new THREE.Color(0xa855f7) },
   });
 
-  // Estado interpolado — refs, cero re-renders
+  // Estado interpolado — todo en refs, cero re-renders
   const tRef         = useRef(0);
   const curFreq      = useRef(1.5);
   const curAudio     = useRef(0.15);
-  const curPrimary   = useRef(new THREE.Color(0x4c1d95));
+  const curScale     = useRef(1.0);
+  const curPrimary   = useRef(new THREE.Color(0x1a0a2e));
   const curSecondary = useRef(new THREE.Color(0xa855f7));
-  const tgtPrimary   = useRef(new THREE.Color(0x4c1d95));
+  const tgtPrimary   = useRef(new THREE.Color(0x1a0a2e));
   const tgtSecondary = useRef(new THREE.Color(0xa855f7));
 
-  // Auto-detección de calidad (si no hay preferencia guardada)
-  const fpsWindow    = useRef<number[]>([]);
-  const fpsChecked   = useRef(false);
+  // Auto-detección de calidad
+  const fpsWindow     = useRef<number[]>([]);
+  const fpsChecked    = useRef(false);
   const hasStoredPref = typeof window !== "undefined" && localStorage.getItem("me_quality") !== null;
 
   useFrame((_s, delta) => {
-    if (!shaderRef.current || delta <= 0) return;
+    if (!shaderRef.current || !meshRef.current || delta <= 0) return;
 
-    // FPS rolling — actualiza el ref del debug panel (30 frames de ventana)
+    // ── FPS rolling (ventana 30 frames) ──────────────────────────────────────
     const instantFPS = Math.min(1 / delta, 120);
     fpsWindow.current.push(instantFPS);
     if (fpsWindow.current.length > 30) fpsWindow.current.shift();
     fpsRef.current = Math.round(
       fpsWindow.current.reduce((a, b) => a + b) / fpsWindow.current.length
     );
-
-    // Auto-calidad al arrancar
     if (!fpsChecked.current && !hasStoredPref && fpsWindow.current.length >= 90) {
       fpsChecked.current = true;
       if (fpsRef.current < 40) setQuality("lite");
     }
 
+    // ── Escala animada por estado ─────────────────────────────────────────────
+    curScale.current = lerp(curScale.current, params.targetScale, 0.04);
+    meshRef.current.scale.setScalar(curScale.current);
+
+    // ── Audio binaural ────────────────────────────────────────────────────────
     const audio    = audioRef.current;
     const hasAudio = audio.amplitude > 0.05;
 
@@ -227,54 +246,79 @@ export function EvaSphere() {
       else                 presetKey = "gamma";
     }
 
-    const colors = PRESET_COLORS[presetKey];
-    tgtPrimary.current.setHex(colors.primary);
-    tgtSecondary.current.setHex(colors.secondary);
+    // ── Colores target ────────────────────────────────────────────────────────
+    if (hasAudio) {
+      // Modo binaural — colores de preset
+      const pc = PRESET_COLORS[presetKey];
+      tgtPrimary.current.setHex(pc.primary);
+      tgtSecondary.current.setHex(pc.secondary);
+    } else {
+      // Modo estado — colores semánticos por estado de la esfera
+      const sc = STATE_COLORS[state] ?? STATE_COLORS.alive;
 
-    const tFreq = hasAudio
+      // Si hay color de categoría (memory_saved/mcp_save): pulso en ese color
+      if (categoryColor && (state === "memory_saved")) {
+        tgtPrimary.current.setHex(0x04020a);
+        tgtSecondary.current.set(categoryColor);
+      } else {
+        tgtPrimary.current.setHex(sc.primary);
+        tgtSecondary.current.setHex(sc.secondary);
+      }
+    }
+
+    // ── Velocidad de animación ────────────────────────────────────────────────
+    const preset   = BINAURAL_PRESETS[presetKey as keyof typeof BINAURAL_PRESETS];
+    const tSpeed   = hasAudio
+      ? 0.6 + preset.sphereSpeed * 2.0
+      : params.targetSpeed * 0.7; // estado conduce la velocidad en idle
+
+    // ── Nivel de audio para el glow ───────────────────────────────────────────
+    const tAudio   = hasAudio
+      ? audio.amplitude
+      : params.targetAmplitude * 0.5 + Math.sin(tRef.current * 0.8) * 0.04;
+
+    // ── Frecuencia del noise ──────────────────────────────────────────────────
+    const tFreq    = hasAudio
       ? 1.5 + audio.frequency * 1.5
       : 1.5 + Math.sin(tRef.current * 0.4) * 0.15;
 
-    const tAudio = hasAudio
-      ? audio.amplitude
-      : 0.12 + Math.sin(tRef.current * 0.8) * 0.05;
+    // ── Amplitud de deformación con boost por estado ──────────────────────────
+    // El debug panel fija la base; estados intensos (born, thinking) la impulsan
+    const stateBoost = Math.max(0, params.targetAmplitude - 0.25) * 0.4;
+    const effectiveAmp = debugParams.noiseAmplitude + stateBoost;
 
-    const preset = BINAURAL_PRESETS[presetKey as keyof typeof BINAURAL_PRESETS];
-    const tSpeed = hasAudio ? 0.6 + preset.sphereSpeed * 2.0 : 0.6;
-
+    // ── Lerp ──────────────────────────────────────────────────────────────────
     curFreq.current  = lerp(curFreq.current,  tFreq,  0.05);
-    curAudio.current = lerp(curAudio.current, tAudio, 0.1);
-    curPrimary.current.lerp(tgtPrimary.current, 0.03);
-    curSecondary.current.lerp(tgtSecondary.current, 0.03);
+    curAudio.current = lerp(curAudio.current, tAudio, 0.08);
+    curPrimary.current.lerp(tgtPrimary.current, 0.025);
+    curSecondary.current.lerp(tgtSecondary.current, 0.025);
     tRef.current += delta * tSpeed;
 
-    // Uniforms de animación
-    shaderRef.current.uniforms.uTime.value       = tRef.current;
-    shaderRef.current.uniforms.uFrequency.value  = curFreq.current;
-    shaderRef.current.uniforms.uAudioLevel.value = curAudio.current;
-    shaderRef.current.uniforms.uLiteMode.value   = quality === "lite" ? 1.0 : 0.0;
-    shaderRef.current.uniforms.uPrimaryColor.value.copy(curPrimary.current);
-    shaderRef.current.uniforms.uSecondaryColor.value.copy(curSecondary.current);
+    // ── Escribir uniforms ─────────────────────────────────────────────────────
+    const u = shaderRef.current.uniforms;
+    u.uTime.value           = tRef.current;
+    u.uFrequency.value      = curFreq.current;
+    u.uAudioLevel.value     = curAudio.current;
+    u.uLiteMode.value       = quality === "lite" ? 1.0 : 0.0;
+    u.uAmplitude.value      = effectiveAmp;
+    u.uMicroAmplitude.value = debugParams.microAmplitude;
+    u.uFresnelPower.value   = debugParams.fresnelPower;
+    u.uGlowBase.value       = debugParams.glowBase;
+    u.uGlowAudio.value      = debugParams.glowAudio;
+    u.uSpecPower.value      = debugParams.specPower;
+    u.uSpecIntensity.value  = debugParams.specIntensity;
+    u.uWhitening.value      = debugParams.whitening;
+    u.uChromaAb.value       = debugParams.chromaAb;
+    u.uPrimaryColor.value.copy(curPrimary.current);
+    u.uSecondaryColor.value.copy(curSecondary.current);
 
-    // Uniforms del debug panel — se aplican en tiempo real cada frame
-    shaderRef.current.uniforms.uAmplitude.value      = params.noiseAmplitude;
-    shaderRef.current.uniforms.uMicroAmplitude.value = params.microAmplitude;
-    shaderRef.current.uniforms.uFresnelPower.value   = params.fresnelPower;
-    shaderRef.current.uniforms.uGlowBase.value       = params.glowBase;
-    shaderRef.current.uniforms.uGlowAudio.value      = params.glowAudio;
-    shaderRef.current.uniforms.uSpecPower.value      = params.specPower;
-    shaderRef.current.uniforms.uSpecIntensity.value  = params.specIntensity;
-    shaderRef.current.uniforms.uWhitening.value      = params.whitening;
-    shaderRef.current.uniforms.uChromaAb.value       = params.chromaAb;
-
-    // Wireframe — prop directa en el material
-    shaderRef.current.wireframe = params.wireframe;
+    shaderRef.current.wireframe = debugParams.wireframe;
   });
 
-  const subdivisions = params.subdivisions;
+  const subdivisions = debugParams.subdivisions;
 
   return (
-    <mesh>
+    <mesh ref={meshRef}>
       <icosahedronGeometry args={[0.75, subdivisions]} />
       <shaderMaterial
         ref={shaderRef}

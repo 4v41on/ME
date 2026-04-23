@@ -40,12 +40,13 @@ interface SphereContextValue {
   params: SphereParams;
   growthLevel: number;
   sphereVisible: boolean;
-  // audioRef — fuente única de verdad para datos de audio
-  // MusicPlayer escribe aquí; EvaSphere lee desde useFrame
   audioRef: MutableRefObject<AudioData>;
-  // quality — "high" (full) | "lite" (optimizado para PC de prueba)
   quality: "high" | "lite";
   setQuality: (q: "high" | "lite") => void;
+  // categoryColor — color hex de la categoría de la última memoria guardada.
+  // La esfera pulsa brevemente en este color al recibir memory_saved/mcp_save.
+  categoryColor: string | null;
+  setCategoryColor: (color: string | null) => void;
   setSphereState: (state: SphereState, durationMs?: number) => void;
   setSphereVisible: (v: boolean) => void;
   incrementGrowth: () => void;
@@ -64,6 +65,7 @@ export function SphereProvider({ children }: { children: ReactNode }) {
   const [growthLevel, setGrowthLevel] = useState(0);
   const [sphereVisible, setSphereVisible] = useState(false);
   const [quality, setQualityState] = useState<"high" | "lite">(getInitialQuality);
+  const [categoryColor, setCategoryColor] = useState<string | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // audioRef compartido — único, no recrea entre renders
   const audioRef = useRef<AudioData>(SILENT_AUDIO);
@@ -97,6 +99,7 @@ export function SphereProvider({ children }: { children: ReactNode }) {
     <SphereContext.Provider value={{
       state, params, growthLevel, sphereVisible, audioRef,
       quality, setQuality,
+      categoryColor, setCategoryColor,
       setSphereState, setSphereVisible, incrementGrowth,
     }}>
       {children}
