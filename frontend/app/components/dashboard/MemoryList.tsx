@@ -3,20 +3,7 @@
 import { useState } from "react";
 import { useMemories } from "@/app/hooks/useMemories";
 import { type Memory } from "@/app/lib/api";
-
-const CATEGORY_ACCENT: Record<string, string> = {
-  tarea:        "#a855f7",
-  nota:         "#52525b",
-  recordatorio: "#00d4ff",
-  estado_animo: "#a855f7",
-  reflexion:    "#52525b",
-  logro:        "#a855f7",
-  aprendizaje:  "#00d4ff",
-  pregunta:     "#71717a",
-  perfil:       "#a855f7",
-};
-
-const ALL_CATEGORIES = Object.keys(CATEGORY_ACCENT);
+import { categoryColor } from "@/app/lib/categories";
 
 interface Props {
   category?: string;
@@ -37,10 +24,8 @@ export function MemoryList({ category, showSearch = true }: Props) {
     setSearchResults(results);
   };
 
-  // Categorías que tienen al menos una memoria
-  const availableCategories = ALL_CATEGORIES.filter(
-    (cat) => memories.some((m) => m.category === cat)
-  );
+  // Categorías presentes en las memorias actuales (sin hardcodear lista)
+  const availableCategories = Array.from(new Set(memories.map((m) => m.category))).sort();
 
   // Aplicar filtro de categoría sobre resultados de búsqueda o lista completa
   const base = searchResults ?? memories;
@@ -94,7 +79,7 @@ export function MemoryList({ category, showSearch = true }: Props) {
               key={cat}
               label={cat}
               active={activeFilter === cat}
-              accent={CATEGORY_ACCENT[cat] ?? "#52525b"}
+              accent={categoryColor(cat)}
               onClick={() => setActiveFilter(activeFilter === cat ? "todos" : cat)}
             />
           ))}
@@ -172,7 +157,7 @@ function MemoryCard({
   const [editTitle, setEditTitle] = useState(m.title);
   const [editContent, setEditContent] = useState(m.content);
   const [saving, setSaving] = useState(false);
-  const accent = CATEGORY_ACCENT[m.category] ?? "#52525b";
+  const accent = categoryColor(m.category);
 
   const handleSave = async () => {
     setSaving(true);

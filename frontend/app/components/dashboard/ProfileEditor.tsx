@@ -2,34 +2,29 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { getProfile, saveProfile, type ProfileEntry } from "@/app/lib/api";
+import { QUESTIONS } from "@/app/components/onboarding/questions";
 
-const FIELD_META: Record<string, { label: string; section: string; readOnly?: boolean }> = {
-  ai_name:        { label: "Nombre del agente", section: "Agente", readOnly: true },
-  archetype:      { label: "Arquetipo",          section: "Agente", readOnly: true },
-  work:           { label: "Trabajo / proyecto / rol",     section: "Qué construyes" },
-  purpose:        { label: "Por qué importa",              section: "Qué construyes" },
-  goal_90d:       { label: "Meta en 90 días",              section: "A dónde vas" },
-  friction:       { label: "Fricción recurrente",          section: "A dónde vas" },
-  cognitive_style:{ label: "Modo de decisión",             section: "Cómo piensas" },
-  flow_context:   { label: "Contexto de flow",             section: "Cómo piensas" },
-  superpower:     { label: "Superpoder",                   section: "Quién eres" },
-  blind_spot:     { label: "Punto ciego",                  section: "Quién eres" },
-  growth_edge:    { label: "Crecimiento ahora",            section: "Quién eres" },
-  agent_role:     { label: "Rol del agente",               section: "Cómo trabajamos" },
-  feedback_style: { label: "Estilo de feedback",           section: "Cómo trabajamos" },
-  memory_core:    { label: "Ancla de memoria permanente",  section: "Cómo trabajamos" },
-  limits:         { label: "Zonas prohibidas",             section: "Cómo trabajamos" },
+// Campos de solo lectura — no vienen de las preguntas del onboarding
+const READ_ONLY_FIELDS: Record<string, { label: string; section: string }> = {
+  ai_name:   { label: "Nombre del agente", section: "Agente" },
+  archetype: { label: "Arquetipo",         section: "Agente" },
 };
 
-const SECTION_ORDER = ["Agente", "Qué construyes", "A dónde vas", "Cómo piensas", "Quién eres", "Cómo trabajamos"];
+// Sección para cada bloque de preguntas
+const BLOCK_LABEL: Record<string, string> = {
+  user_profile: "Perfil",
+  interaction:  "Cómo trabajamos",
+};
 
 function ProfileField({
   entry,
-  meta,
+  label,
+  readOnly,
   onSave,
 }: {
   entry: ProfileEntry;
-  meta: { label: string; readOnly?: boolean };
+  label: string;
+  readOnly?: boolean;
   onSave: (key: string, value: string) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
@@ -47,18 +42,18 @@ function ProfileField({
     setTimeout(() => setSaved(false), 1200);
   };
 
-  const accent = saved ? "#a855f7" : "#27272a";
+  const borderColor = saved ? "#a855f7" : "#27272a";
 
   return (
     <div
       className="flex flex-col gap-1 py-2 transition-all"
-      style={{ borderLeft: `2px solid ${accent}`, paddingLeft: "10px", transition: "border-color 0.4s ease" }}
+      style={{ borderLeft: `2px solid ${borderColor}`, paddingLeft: "10px", transition: "border-color 0.4s ease" }}
     >
       <span className="font-mono uppercase tracking-widest" style={{ fontSize: "8px", color: "#3f3f46" }}>
-        {meta.label}
+        {label}
       </span>
 
-      {meta.readOnly ? (
+      {readOnly ? (
         <span className="font-mono" style={{ fontSize: "11px", color: "#a855f7" }}>
           {entry.value || "—"}
         </span>
@@ -87,7 +82,7 @@ function ProfileField({
         <span
           className="font-mono cursor-text"
           style={{ fontSize: "11px", color: entry.value ? "#71717a" : "#2a2a35", lineHeight: 1.5 }}
-          onClick={() => !meta.readOnly && setEditing(true)}
+          onClick={() => setEditing(true)}
           title="Click para editar"
         >
           {entry.value || "— click para editar"}
@@ -118,23 +113,15 @@ export function ProfileEditor() {
     </span>
   );
 
-  // Agrupar por sección
-  const bySection: Record<string, ProfileEntry[]> = {};
-  entries.forEach((e) => {
-    const meta = FIELD_META[e.key];
-    if (!meta) return;
-    if (!bySection[meta.section]) bySection[meta.section] = [];
-    bySection[meta.section].push(e);
-  });
+  // Mapa key→entry para lookup rápido
+  const entryMap = new Map(entries.map((e) => [e.key, e]));
+  const blankEntry = (key: string): ProfileEntry => ({ key, value: "" });
 
-  // Asegurar que campos sin datos del perfil aparezcan igual
-  Object.entries(FIELD_META).forEach(([key, meta]) => {
-    if (!entries.find((e) => e.key === key)) {
-      if (!bySection[meta.section]) bySection[meta.section] = [];
-      if (!bySection[meta.section].find((e) => e.key === key)) {
-        bySection[meta.section].push({ key, value: "" });
-      }
-    }
+  // Agrupar preguntas por bloque (viene de questions.ts — fuente única de verdad)
+  const byBlock = new Map<string, typeof QUESTIONS>();
+  QUESTIONS.forEach((q) => {
+    if (!byBlock.has(q.block)) byBlock.set(q.block, []);
+    byBlock.get(q.block)!.push(q);
   });
 
   return (
@@ -143,29 +130,48 @@ export function ProfileEditor() {
         click en cualquier campo para editar · se guarda al perder el foco
       </p>
 
-      {SECTION_ORDER.map((section) => {
-        const fields = bySection[section];
-        if (!fields?.length) return null;
-        return (
-          <div key={section} className="flex flex-col gap-1">
-            <span
-              className="font-mono uppercase tracking-widest mb-2"
-              style={{ fontSize: "8px", color: "#3f3f46", borderBottom: "1px solid #18181b", paddingBottom: "4px" }}
-            >
-              {section}
-            </span>
-            <div className="flex flex-col gap-3">
-              {fields.map((e) => {
-                const meta = FIELD_META[e.key];
-                if (!meta) return null;
-                return (
-                  <ProfileField key={e.key} entry={e} meta={meta} onSave={handleSave} />
-                );
-              })}
-            </div>
+      {/* Campos de solo lectura: ai_name, archetype */}
+      <div className="flex flex-col gap-1">
+        <span
+          className="font-mono uppercase tracking-widest mb-2"
+          style={{ fontSize: "8px", color: "#3f3f46", borderBottom: "1px solid #18181b", paddingBottom: "4px" }}
+        >
+          Agente
+        </span>
+        <div className="flex flex-col gap-3">
+          {Object.entries(READ_ONLY_FIELDS).map(([key, meta]) => (
+            <ProfileField
+              key={key}
+              entry={entryMap.get(key) ?? blankEntry(key)}
+              label={meta.label}
+              readOnly
+              onSave={handleSave}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Preguntas del onboarding, agrupadas por bloque — desde questions.ts */}
+      {Array.from(byBlock.entries()).map(([block, questions]) => (
+        <div key={block} className="flex flex-col gap-1">
+          <span
+            className="font-mono uppercase tracking-widest mb-2"
+            style={{ fontSize: "8px", color: "#3f3f46", borderBottom: "1px solid #18181b", paddingBottom: "4px" }}
+          >
+            {BLOCK_LABEL[block] ?? block}
+          </span>
+          <div className="flex flex-col gap-3">
+            {questions.map((q) => (
+              <ProfileField
+                key={q.id}
+                entry={entryMap.get(q.id) ?? blankEntry(q.id)}
+                label={q.blockLabel + " — " + q.text.slice(0, 50) + (q.text.length > 50 ? "…" : "")}
+                onSave={handleSave}
+              />
+            ))}
           </div>
-        );
-      })}
+        </div>
+      ))}
     </div>
   );
 }

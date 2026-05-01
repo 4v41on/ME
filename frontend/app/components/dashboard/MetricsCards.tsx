@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useDashboard } from "@/app/hooks/useDashboard";
+import { categoryColor } from "@/app/lib/categories";
 
 // ─── Contador animado (0 → value, ease-out cubic) ─────────────────────────────
 function AnimatedNumber({ value }: { value: number }) {
@@ -107,18 +108,6 @@ function MetricCard({
 
 // ─── Breakdown por categoría ──────────────────────────────────────────────────
 
-const CATEGORY_ACCENT: Record<string, string> = {
-  tarea:        "#a855f7",
-  nota:         "#52525b",
-  recordatorio: "#00d4ff",
-  estado_animo: "#a855f7",
-  reflexion:    "#52525b",
-  logro:        "#a855f7",
-  aprendizaje:  "#00d4ff",
-  pregunta:     "#71717a",
-  perfil:       "#a855f7",
-};
-
 function CategoryBreakdown({ por_categoria }: { por_categoria: Record<string, number> }) {
   const entries = Object.entries(por_categoria).sort((a, b) => b[1] - a[1]);
   if (!entries.length) return null;
@@ -131,7 +120,7 @@ function CategoryBreakdown({ por_categoria }: { por_categoria: Record<string, nu
       </span>
       <div className="flex flex-col gap-2">
         {entries.map(([cat, count]) => {
-          const accent = CATEGORY_ACCENT[cat] ?? "#52525b";
+          const accent = categoryColor(cat);
           const pct = max > 0 ? (count / max) * 100 : 0;
           return (
             <div key={cat} className="flex flex-col gap-0.5">

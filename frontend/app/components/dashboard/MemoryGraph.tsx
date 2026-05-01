@@ -2,18 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { getMemoryGraph, type GraphNode, type GraphData } from "@/app/lib/api";
-
-const CATEGORY_COLOR: Record<string, string> = {
-  tarea:        "#a855f7",
-  nota:         "#52525b",
-  recordatorio: "#00d4ff",
-  estado_animo: "#a855f7",
-  reflexion:    "#71717a",
-  logro:        "#a855f7",
-  aprendizaje:  "#00d4ff",
-  pregunta:     "#3f3f46",
-  perfil:       "#a855f7",
-};
+import { categoryColor } from "@/app/lib/categories";
 
 const NODE_RADIUS = 5;
 const REPULSION = 3000;
@@ -152,7 +141,7 @@ export function MemoryGraph() {
 
       // Nodes
       nodes.forEach((n) => {
-        const color = CATEGORY_COLOR[n.category] ?? "#52525b";
+        const color = categoryColor(n.category);
         ctx.beginPath();
         ctx.arc(n.x, n.y, NODE_RADIUS, 0, Math.PI * 2);
         ctx.fillStyle = color + "cc";
@@ -306,13 +295,13 @@ export function MemoryGraph() {
             left: tooltip.x + 10,
             top: tooltip.y - 30,
             background: "rgba(0,0,0,0.9)",
-            border: `1px solid ${CATEGORY_COLOR[tooltip.node.category] ?? "#52525b"}40`,
+            border: `1px solid ${categoryColor(tooltip.node.category)}40`,
             padding: "4px 8px",
             maxWidth: "200px",
             zIndex: 10,
           }}
         >
-          <span style={{ fontSize: "9px", color: CATEGORY_COLOR[tooltip.node.category] ?? "#52525b", display: "block", marginBottom: 2 }}>
+          <span style={{ fontSize: "9px", color: categoryColor(tooltip.node.category), display: "block", marginBottom: 2 }}>
             {tooltip.node.category} · {tooltip.node.date}
           </span>
           <span style={{ fontSize: "10px", color: "#a1a1aa" }}>{tooltip.node.label}</span>
@@ -325,12 +314,12 @@ export function MemoryGraph() {
           className="absolute bottom-0 left-0 right-0 font-mono"
           style={{
             background: "rgba(0,0,0,0.92)",
-            borderTop: `1px solid ${CATEGORY_COLOR[selected.category] ?? "#52525b"}40`,
+            borderTop: `1px solid ${categoryColor(selected.category)}40`,
             padding: "10px 12px",
           }}
         >
           <div className="flex items-center justify-between mb-1">
-            <span style={{ fontSize: "9px", color: CATEGORY_COLOR[selected.category] ?? "#52525b" }}>
+            <span style={{ fontSize: "9px", color: categoryColor(selected.category) }}>
               {selected.category} · {selected.date}
             </span>
             <button
@@ -344,15 +333,13 @@ export function MemoryGraph() {
         </div>
       )}
 
-      {/* Legend */}
+      {/* Legend — derivado de las categorías reales en el grafo */}
       <div className="absolute top-2 right-2 flex flex-col gap-1">
-        {Object.entries(CATEGORY_COLOR)
-          .filter(([, c]) => c !== "#52525b" && c !== "#71717a" && c !== "#3f3f46")
-          .filter(([cat]) => data.nodes.some((n) => n.category === cat))
-          .slice(0, 5)
-          .map(([cat, color]) => (
+        {Array.from(new Set(data.nodes.map((n) => n.category)))
+          .slice(0, 6)
+          .map((cat) => (
             <div key={cat} className="flex items-center gap-1.5">
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, display: "inline-block" }} />
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: categoryColor(cat), display: "inline-block" }} />
               <span style={{ fontSize: "8px", color: "#3f3f46", fontFamily: "monospace" }}>{cat}</span>
             </div>
           ))}
