@@ -120,7 +120,22 @@ La personalidad semilla. No es definitiva — el agente crece desde ahí via CAG
 **Paso 3 — 13 preguntas.**
 Quién eres, cómo funcionas, cómo quieres que te hablen. Sin trampa, sin truco — el sistema usa exactamente lo que respondes.
 
-Al terminar, `vault/` aparece con tres archivos: el perfil del agente, el tuyo, y el protocolo de relación entre los dos. Son el contexto estático que el agente lee en cada sesión sin que tengas que repetirle nada.
+Al terminar, `vault/` aparece con la siguiente estructura:
+
+```
+vault/
+├── User/
+│   └── USER-PROFILE.md       ← quién sos vos (evoluciona con el uso)
+└── {nombre del agente}/
+    ├── AGENT-IDENTITY.md     ← quién es el agente (editable)
+    ├── HOW-TO-TALK.md        ← protocolo de relación
+    ├── skills/               ← capacidades (se completan en Fase 2)
+    ├── hooks/
+    ├── subagents/
+    └── plugins/
+```
+
+Es el contexto estático que el agente lee en cada sesión sin que tengas que repetirle nada.
 
 **Si usás Obsidian:** apuntá `ME_VAULT_PATH` en `.env` a tu vault de Obsidian (o a una subcarpeta dentro de él) antes de correr el onboarding. Los archivos se generan directamente ahí y podés editarlos, expandirlos con tareas, métricas y notas, y el agente los lee todo junto.
 
@@ -288,9 +303,15 @@ Remove-Item "$env:USERPROFILE\.me\me.db" -ErrorAction SilentlyContinue
 ME/
 ├── ME-Init.md                  ← contexto de sesión para el agente
 ├── vault/                      ← generado en onboarding, copiar a Obsidian
-│   ├── AGENT-IDENTITY.md
-│   ├── USER-PROFILE.md
-│   └── HOW-TO-TALK.md
+│   ├── User/
+│   │   └── USER-PROFILE.md
+│   └── {agentName}/
+│       ├── AGENT-IDENTITY.md
+│       ├── HOW-TO-TALK.md
+│       ├── skills/
+│       ├── hooks/
+│       ├── subagents/
+│       └── plugins/
 ├── backend/                    ← Go 1.21+, SQLite+FTS5, REST API
 ├── frontend/
 │   └── app/
