@@ -60,7 +60,12 @@ func (h *SkillsHandler) Execute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var params map[string]any
-	json.NewDecoder(r.Body).Decode(&params)
+	if r.ContentLength > 0 {
+		if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+			httpError(w, "invalid JSON body: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
 
 	switch name {
 	case "daily-summary":
@@ -111,7 +116,11 @@ func (h *SkillsHandler) skillClearCompleted(w http.ResponseWriter, r *http.Reque
 		httpError(w, "failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	n, _ := res.RowsAffected()
+	n, err := res.RowsAffected()
+	if err != nil {
+		httpError(w, "failed to count deleted: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"skill":   "clear-completed-tasks",
 		"deleted": n,

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -102,11 +103,13 @@ func (h *ProfileHandler) CompleteOnboarding(vaultPath string) http.HandlerFunc {
 		for _, seed := range archetype.Seeds {
 			id := newUUID()
 			title := archetype.Name + " — seed"
-			_, _ = h.db.Exec(
+			if _, err := h.db.Exec(
 				`INSERT INTO memories (id, category, title, content, metadata, tags, created_at, updated_at)
 				 VALUES (?, 'reflexion', ?, ?, '{}', '["arquetipo","seed","'||?||'"]', ?, ?)`,
 				id, title, seed, req.Archetype, now, now,
-			)
+			); err != nil {
+				log.Printf("warning: failed to plant archetype seed %q: %v", title, err)
+			}
 		}
 
 		// --- 3. Guardar respuestas del onboarding en Šà (perfil) ---
@@ -118,10 +121,10 @@ func (h *ProfileHandler) CompleteOnboarding(vaultPath string) http.HandlerFunc {
 
 		// --- 4. Generar vault/ ---
 		if err := GenerateVault(vaultPath, req.AIName, archetype, answerMap); err != nil {
-			// No fatal — el perfil ya se guardó, solo avisamos
+			log.Printf("warning: vault generation failed: %v", err)
 			writeJSON(w, http.StatusOK, map[string]any{
-				"ok":             true,
-				"vault_warning":  err.Error(),
+				"ok":              true,
+				"vault_warning":   err.Error(),
 				"phase1_complete": true,
 			})
 			return
@@ -129,7 +132,6 @@ func (h *ProfileHandler) CompleteOnboarding(vaultPath string) http.HandlerFunc {
 
 		writeJSON(w, http.StatusOK, map[string]any{
 			"ok":              true,
-			"vault_path":      vaultPath,
 			"files_generated": []string{FileAgentIdentity, FileUserProfile, FileHowToTalk},
 			"phase1_complete": true,
 		})
@@ -287,9 +289,13 @@ func (h *ProfileHandler) Reset(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Borrar memorias generadas por onboarding (perfil + seeds de arquetipo)
-	if _, err := tx.Exec(`DELETE FROM memories WHERE category IN ('perfil', 'reflexion') AND JSON_EXTRACT(tags, '$[1]') IN ('onboarding', 'seed')`); err != nil {
-		// No fatal — puede que no existan o la query FTS5 varíe
-		_ = err
+	// Busca 'onboarding' o 'seed' en cualquier posición del array de tags.
+	if _, err := tx.Exec(
+		`DELETE FROM memories
+		 WHERE category IN ('perfil', 'reflexion')
+		   AND (tags LIKE '%"onboarding"%' OR tags LIKE '%"seed"%')`,
+	); err != nil {
+		log.Printf("warning: failed to delete onboarding memories during reset: %v", err)
 	}
 
 	if err := tx.Commit(); err != nil {

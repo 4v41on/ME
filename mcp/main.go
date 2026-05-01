@@ -33,6 +33,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -220,10 +221,24 @@ var tools = []Tool{
 var initPath string
 var vaultPath string
 
+// mcpDataDir returns ~/.me, creating it if needed.
+// Mirrors backend/config/config.go so both processes share the same default paths.
+func mcpDataDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		home = "."
+	}
+	dir := filepath.Join(home, ".me")
+	_ = os.MkdirAll(dir, 0755)
+	return dir
+}
+
 func main() {
+	data := mcpDataDir()
+
 	dbPath := os.Getenv("ME_DB_PATH")
 	if dbPath == "" {
-		dbPath = "./me.db"
+		dbPath = filepath.Join(data, "me.db")
 	}
 
 	initPath = os.Getenv("ME_INIT_PATH")
@@ -233,7 +248,7 @@ func main() {
 
 	vaultPath = os.Getenv("ME_VAULT_PATH")
 	if vaultPath == "" {
-		vaultPath = "./vault"
+		vaultPath = filepath.Join(data, "vault")
 	}
 
 	db, err := openDB(dbPath)

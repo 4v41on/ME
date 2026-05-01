@@ -16,7 +16,7 @@ const MusicPlayer = dynamic(
   { ssr: false }
 );
 
-type Stage = "loading" | "naming" | "archetype" | "questions" | "summary" | "awaiting" | "done";
+type Stage = "loading" | "retrying" | "naming" | "archetype" | "questions" | "summary" | "awaiting" | "done";
 
 interface Props {
   children: React.ReactNode;
@@ -50,25 +50,41 @@ export function OnboardingFlow({ children }: Props) {
     // Deps vacías — solo al montar. setSphereState no va en deps porque
     // cambia referencia con cada growthLevel, lo que reactivaría esta
     // verificación mid-onboarding y volvería a "naming".
-    getProfile()
-      .then((p) => {
-        if (p.phase1_complete || p.onboarding_complete) {
-          const nameEntry = p.entries.find((e: { key: string }) => e.key === "ai_name");
-          if (nameEntry) setAiName(nameEntry.value);
-          setSphereVisible(true);
-          setSphereState("alive");
-          setStage("done");
-        } else {
-          setSphereVisible(false);
-          setSphereState("dormant");
-          setStage("naming");
-        }
-      })
-      .catch(() => {
-        setSphereVisible(false);
-        setSphereState("dormant");
-        setStage("naming");
-      });
+    let attempts = 0;
+    const MAX_ATTEMPTS = 10;
+    const RETRY_MS = 800;
+
+    const checkProfile = () => {
+      getProfile()
+        .then((p) => {
+          if (p.phase1_complete || p.onboarding_complete) {
+            const nameEntry = p.entries.find((e: { key: string }) => e.key === "ai_name");
+            if (nameEntry) setAiName(nameEntry.value);
+            setSphereVisible(true);
+            setSphereState("alive");
+            setStage("done");
+          } else {
+            setSphereVisible(false);
+            setSphereState("dormant");
+            setStage("naming");
+          }
+        })
+        .catch(() => {
+          attempts++;
+          if (attempts < MAX_ATTEMPTS) {
+            // Backend aún no está listo — reintentar antes de asumir onboarding nuevo
+            setStage("retrying");
+            setTimeout(checkProfile, RETRY_MS);
+          } else {
+            // Después de ~8s sin respuesta, asumir instalación nueva
+            setSphereVisible(false);
+            setSphereState("dormant");
+            setStage("naming");
+          }
+        });
+    };
+
+    checkProfile();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -152,8 +168,8 @@ export function OnboardingFlow({ children }: Props) {
         style={{ background: "radial-gradient(ellipse at center, #a855f722 0%, transparent 70%)" }}
       />
 
-      {/* Loading */}
-      {stage === "loading" && (
+      {/* Loading / Retrying */}
+      {(stage === "loading" || stage === "retrying") && (
         <div className="absolute inset-0 z-30 flex items-center justify-center">
           <span className="font-mono text-xs text-[#71717a] animate-pulse tracking-widest">
             inicializando šà 𒊮
@@ -162,7 +178,7 @@ export function OnboardingFlow({ children }: Props) {
       )}
 
       {/* Contenido del onboarding */}
-      {stage !== "loading" && (
+      {stage !== "loading" && stage !== "retrying" && (
         <div
           className={`absolute inset-0 z-30 transition-opacity duration-200 ${
             transitioning ? "opacity-0" : "opacity-100"

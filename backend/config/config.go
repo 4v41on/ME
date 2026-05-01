@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 )
 
 // Config holds all runtime configuration for the ME backend.
@@ -18,13 +19,15 @@ type Config struct {
 }
 
 // Load reads configuration from environment variables.
-// Ollama defaults to localhost:11434 but is treated as optional at runtime.
+// Defaults use ~/.me/ so the DB is always at the same location
+// regardless of which directory the server is started from.
 func Load() *Config {
+	data := dataDir()
 	return &Config{
 		Port:        getEnv("ME_PORT", "8082"),
-		DBPath:      getEnv("ME_DB_PATH", "./me.db"),
-		VaultPath:   getEnv("ME_VAULT_PATH", "../vault"),
-		OllamaURL:   getEnv("OLLAMA_URL", ""),   // empty = disabled
+		DBPath:      getEnv("ME_DB_PATH", filepath.Join(data, "me.db")),
+		VaultPath:   getEnv("ME_VAULT_PATH", filepath.Join(data, "vault")),
+		OllamaURL:   getEnv("OLLAMA_URL", ""),
 		OllamaModel: getEnv("OLLAMA_MODEL", "mistral"),
 	}
 }
@@ -32,6 +35,18 @@ func Load() *Config {
 // OllamaEnabled reports whether Ollama is configured.
 func (c *Config) OllamaEnabled() bool {
 	return c.OllamaURL != ""
+}
+
+// dataDir returns the persistent data directory (~/.me).
+// Created on first call if it does not exist.
+func dataDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		home = "."
+	}
+	dir := filepath.Join(home, ".me")
+	_ = os.MkdirAll(dir, 0755)
+	return dir
 }
 
 func getEnv(key, fallback string) string {

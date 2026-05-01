@@ -25,30 +25,30 @@ func (h *DashboardHandler) Stats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Total memories
-	h.db.QueryRow("SELECT COUNT(*) FROM memories").Scan(&stats.TotalMemories)
+	_ = h.db.QueryRow("SELECT COUNT(*) FROM memories").Scan(&stats.TotalMemories)
 
 	// Tareas pendientes: metadata JSON contains "completada": false
-	h.db.QueryRow(
+	_ = h.db.QueryRow(
 		`SELECT COUNT(*) FROM memories
 		 WHERE category = 'tarea'
 		   AND (metadata IS NULL OR json_extract(metadata, '$.completada') = false OR json_extract(metadata, '$.completada') IS NULL)`,
 	).Scan(&stats.TareasPendientes)
 
 	// Tareas con fecha_limite = hoy
-	h.db.QueryRow(
+	_ = h.db.QueryRow(
 		`SELECT COUNT(*) FROM memories
 		 WHERE category = 'tarea'
 		   AND date(json_extract(metadata, '$.fecha_limite')) = date('now')`,
 	).Scan(&stats.TareasHoy)
 
-	// Per-category counts
-	rows, err := h.db.Query("SELECT category, COUNT(*) FROM memories GROUP BY category")
+	// Per-category counts (ORDER BY category for stable output)
+	rows, err := h.db.Query("SELECT category, COUNT(*) FROM memories GROUP BY category ORDER BY category")
 	if err == nil {
 		defer rows.Close()
 		for rows.Next() {
 			var cat string
 			var count int
-			rows.Scan(&cat, &count)
+			_ = rows.Scan(&cat, &count)
 			stats.PorCategoria[cat] = count
 		}
 	}

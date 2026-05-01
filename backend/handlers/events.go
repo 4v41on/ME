@@ -81,7 +81,7 @@ func NewEventsHandler() *EventsHandler { return &EventsHandler{} }
 func (h *EventsHandler) InternalPublish(w http.ResponseWriter, r *http.Request) {
 	var evt SphereEvent
 	if err := json.NewDecoder(r.Body).Decode(&evt); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+		httpError(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	Bus.Publish(evt)
@@ -98,7 +98,7 @@ func (h *EventsHandler) Stream(w http.ResponseWriter, r *http.Request) {
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		httpError(w, "streaming not supported", http.StatusInternalServerError)
 		return
 	}
 

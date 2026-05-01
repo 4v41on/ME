@@ -76,7 +76,8 @@ func (h *ACEHandler) Recent(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.db.Query(
 		`SELECT id, category, title, content, metadata, tags, created_at, updated_at
 		 FROM memories
-		 WHERE tags LIKE '%ace%'
+		 WHERE category = 'nota'
+		   AND (json_extract(tags, '$[0]') = 'ace' OR json_extract(tags, '$[1]') = 'ace')
 		 ORDER BY created_at DESC LIMIT 5`,
 	)
 	if err != nil {

@@ -104,9 +104,9 @@ func (h *MemoryHandler) List(w http.ResponseWriter, r *http.Request) {
 	// Count total (same filter)
 	var total int
 	if category != "" {
-		h.db.QueryRow("SELECT COUNT(*) FROM memories WHERE category = ?", category).Scan(&total)
+		_ = h.db.QueryRow("SELECT COUNT(*) FROM memories WHERE category = ?", category).Scan(&total)
 	} else {
-		h.db.QueryRow("SELECT COUNT(*) FROM memories").Scan(&total)
+		_ = h.db.QueryRow("SELECT COUNT(*) FROM memories").Scan(&total)
 	}
 
 	writeJSON(w, http.StatusOK, models.MemoryListResponse{Memories: memories, Total: total})
@@ -163,7 +163,11 @@ func (h *MemoryHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	n, _ := res.RowsAffected()
+	n, err := res.RowsAffected()
+	if err != nil {
+		httpError(w, "update verification failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 	if n == 0 {
 		httpError(w, "memory not found", http.StatusNotFound)
 		return
@@ -186,7 +190,11 @@ func (h *MemoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	n, _ := res.RowsAffected()
+	n, err := res.RowsAffected()
+	if err != nil {
+		httpError(w, "delete verification failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 	if n == 0 {
 		httpError(w, "memory not found", http.StatusNotFound)
 		return
@@ -205,8 +213,17 @@ func (h *MemoryHandler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// FTS5 query: escape special chars, append * for prefix matching
-	ftsQuery := strings.ReplaceAll(q, "\"", "") + "*"
+	// FTS5 query: strip special chars and boolean operators to prevent injection.
+	// We strip both upper and lower variants without changing original case.
+	ftsQuery := q
+	for _, char := range []string{"\"", "(", ")", "^"} {
+		ftsQuery = strings.ReplaceAll(ftsQuery, char, "")
+	}
+	for _, op := range []string{"AND", "OR", "NOT", "NEAR"} {
+		ftsQuery = strings.ReplaceAll(ftsQuery, " "+op+" ", " ")
+		ftsQuery = strings.ReplaceAll(ftsQuery, " "+strings.ToLower(op)+" ", " ")
+	}
+	ftsQuery = strings.TrimSpace(ftsQuery) + "*"
 
 	rows, err := h.db.Query(
 		`SELECT m.id, m.category, m.title, m.content, m.metadata, m.tags, m.created_at, m.updated_at
@@ -248,10 +265,14 @@ func extractID(path, prefix string) string {
 }
 
 func intParam(s string, def int) int {
-	if v, err := strconv.Atoi(s); err == nil && v > 0 {
-		return v
+	if s == "" {
+		return def
 	}
-	return def
+	v, err := strconv.Atoi(s)
+	if err != nil || v <= 0 || v > 1000 {
+		return def
+	}
+	return v
 }
 
 func httpError(w http.ResponseWriter, msg string, code int) {

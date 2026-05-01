@@ -124,7 +124,7 @@ Al terminar, `vault/` aparece con tres archivos: el perfil del agente, el tuyo, 
 
 **Si usás Obsidian:** apuntá `ME_VAULT_PATH` en `.env` a tu vault de Obsidian (o a una subcarpeta dentro de él) antes de correr el onboarding. Los archivos se generan directamente ahí y podés editarlos, expandirlos con tareas, métricas y notas, y el agente los lee todo junto.
 
-**Si no usás Obsidian:** el vault se genera en `ME/vault/` por default. Son archivos `.md` — cualquier editor de texto los abre. El sistema funciona igual.
+**Si no usás Obsidian:** el vault se genera en `~/.me/vault/` por default (`C:\Users\TuUsuario\.me\vault\` en Windows). Son archivos `.md` — cualquier editor de texto los abre. El sistema funciona igual.
 
 > **Abrí opencode desde la carpeta `ME_VAULT_PATH`** — así carga `CLAUDE.md` y `ME-Init.md` como contexto estático automáticamente.
 
@@ -145,13 +145,13 @@ Hay un template en `mcp.json.example` en la raíz del repo. Copia los valores y 
   "type": "local",
   "command": ["C:\\ruta\\a\\ME\\mcp\\me-mcp.exe"],
   "environment": {
-    "ME_DB_PATH":    "C:\\ruta\\a\\ME\\backend\\me.db",
-    "ME_VAULT_PATH": "C:\\ruta\\a\\ME\\vault",
-    "ME_INIT_PATH":  "C:\\ruta\\a\\ME\\ME-Init.md"
+    "ME_INIT_PATH": "C:\\ruta\\a\\ME\\ME-Init.md"
   },
   "enabled": true
 }
 ```
+
+`ME_DB_PATH` y `ME_VAULT_PATH` son opcionales — el sistema usa `~/.me/` por default. Solo configúralos si querés rutas personalizadas (ej. apuntar el vault directo a Obsidian).
 
 **Claude Code** — crea `.mcp.json` en tu carpeta de trabajo:
 
@@ -161,9 +161,7 @@ Hay un template en `mcp.json.example` en la raíz del repo. Copia los valores y 
     "me": {
       "command": "C:\\ruta\\a\\ME\\mcp\\me-mcp.exe",
       "env": {
-        "ME_DB_PATH":    "C:\\ruta\\a\\ME\\backend\\me.db",
-        "ME_VAULT_PATH": "C:\\ruta\\a\\ME\\vault",
-        "ME_INIT_PATH":  "C:\\ruta\\a\\ME\\ME-Init.md"
+        "ME_INIT_PATH": "C:\\ruta\\a\\ME\\ME-Init.md"
       }
     }
   }
@@ -218,7 +216,7 @@ Ambos escuchan en `127.0.0.1`. Eso significa que ningún otro dispositivo en tu 
 
 **Si Windows Firewall te pregunta** al ejecutar el backend: podés bloquear el acceso a redes públicas y privadas sin problema. El sistema no necesita internet para funcionar.
 
-**Dónde viven tus datos:** en un archivo SQLite en `ME/backend/me.db`. Tus memorias, tu perfil, tu historial de chat — todo ahí, en tu máquina. Para desinstalar, borrás la carpeta.
+**Dónde viven tus datos:** en `~/.me/me.db` (`C:\Users\TuUsuario\.me\me.db` en Windows). Tus memorias, tu perfil, tu historial de chat — todo ahí, en tu máquina, siempre en el mismo lugar sin importar desde dónde arranques el servidor. Para desinstalar, borrás esa carpeta y el repo.
 
 **Conexiones externas:** ninguna por defecto. ME es offline. Si configurás Ollama, también corre en tu máquina. La única red que usa el sistema es localhost.
 
@@ -265,7 +263,7 @@ cd ME\mcp && go build -o me-mcp.exe .
 Remove-Item ME\mcp\me-mcp.exe -ErrorAction SilentlyContinue
 
 # Eliminar base de datos — BORRA TODO, sin preguntar
-Remove-Item ME\backend\me.db -ErrorAction SilentlyContinue
+Remove-Item "$env:USERPROFILE\.me\me.db" -ErrorAction SilentlyContinue
 ```
 
 ---
@@ -275,8 +273,8 @@ Remove-Item ME\backend\me.db -ErrorAction SilentlyContinue
 | Variable | Default | Descripción |
 |----------|---------|-------------|
 | `ME_PORT` | `8082` | Puerto del backend |
-| `ME_DB_PATH` | `./me.db` | Base de datos SQLite — Šà 𒊮 |
-| `ME_VAULT_PATH` | `../vault` | Directorio del vault CAG — apuntá a tu vault de Obsidian si usás uno |
+| `ME_DB_PATH` | `~/.me/me.db` | Base de datos SQLite — Šà 𒊮 |
+| `ME_VAULT_PATH` | `~/.me/vault` | Directorio del vault CAG — apuntá a tu vault de Obsidian si usás uno |
 | `ME_INIT_PATH` | `./ME-Init.md` | Init file para el MCP |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8082` | URL del backend desde el browser |
 | `OLLAMA_URL` | vacío | URL de Ollama — vacío = deshabilitado |
