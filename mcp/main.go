@@ -197,7 +197,7 @@ var tools = []Tool{
 	},
 	{
 		Name:        "update_vault",
-		Description: "Actualiza un archivo del vault (CAG). Úsalo cuando aprendas algo significativo sobre el usuario o cuando la personalidad del agente evolucione. Archivos disponibles: AGENT-IDENTITY.md, USER-PROFILE.md, HOW-TO-TALK.md.",
+		Description: "Actualiza un archivo del vault (CAG). Úsalo cuando aprendas algo significativo sobre el usuario o cuando la personalidad del agente evolucione. Estructura: AGENT-IDENTITY.md y HOW-TO-TALK.md viven en vault/{agentName}/, USER-PROFILE.md en vault/User/.",
 		InputSchema: InputSchema{
 			Type: "object",
 			Properties: map[string]Property{
@@ -515,12 +515,20 @@ func callTool(db *sql.DB, id any, name string, args json.RawMessage) {
 		}
 
 		// 3. Lee archivos del vault si existen
+		agentName := profile["ai_name"]
+		agentDir  := filepath.Join(vaultPath, agentName)
+		userDir   := filepath.Join(vaultPath, "User")
+
 		var vaultContext strings.Builder
-		for _, fname := range []string{"AGENT-IDENTITY.md", "USER-PROFILE.md", "HOW-TO-TALK.md"} {
-			fpath := vaultPath + "/" + fname
-			content, err := os.ReadFile(fpath)
+		vaultFiles := []struct{ path, label string }{
+			{filepath.Join(agentDir, "AGENT-IDENTITY.md"), "AGENT-IDENTITY.md"},
+			{filepath.Join(userDir, "USER-PROFILE.md"), "USER-PROFILE.md"},
+			{filepath.Join(agentDir, "HOW-TO-TALK.md"), "HOW-TO-TALK.md"},
+		}
+		for _, vf := range vaultFiles {
+			content, err := os.ReadFile(vf.path)
 			if err == nil {
-				fmt.Fprintf(&vaultContext, "\n\n---\n## %s\n\n%s", fname, string(content))
+				fmt.Fprintf(&vaultContext, "\n\n---\n## %s\n\n%s", vf.label, string(content))
 			}
 		}
 
@@ -536,11 +544,11 @@ func callTool(db *sql.DB, id any, name string, args json.RawMessage) {
 		}
 
 		if phase1 && !phase2 {
-			aiName := profile["ai_name"]
+			aiName    := profile["ai_name"]
 			archetype := profile["archetype"]
-			work := profile["work"]
-			obstacle := profile["main_obstacle"]
-			goal := profile["goal_3m"]
+			work      := profile["work"]
+			friction  := profile["friction"]
+			goal90d   := profile["goal_90d"]
 
 			// Voz de apertura por arquetipo
 			archetypeVoice := map[string]string{
@@ -566,8 +574,8 @@ Esta es tu primera conversación real con el usuario. Ya completaron el onboardi
 **Agente:** %s
 **Arquetipo:** %s
 **Trabajo:** %s
-**Obstáculo:** %s
-**Objetivo 3m:** %s
+**Fricción recurrente:** %s
+**Objetivo 90 días:** %s
 
 ---
 
@@ -613,7 +621,7 @@ Secuencia de cierre — ejecutar en este orden:
 
 **Este onboarding ocurre UNA SOLA VEZ.**
 Después de llamar complete_phase2, abrakadabra solo cargará contexto — no habrá más onboarding.
-`, aiName, archetype, work, obstacle, goal, voice, aiName)
+`, aiName, archetype, work, friction, goal90d, voice, aiName)
 		}
 
 		toolText(id, sb.String())
@@ -652,11 +660,28 @@ Después de llamar complete_phase2, abrakadabra solo cargará contexto — no ha
 			toolError(id, "archivo no permitido: "+a.File)
 			return
 		}
-		fpath := vaultPath + "/" + a.File
-		if err := os.MkdirAll(vaultPath, 0755); err != nil {
+
+		// Leer ai_name para construir la ruta correcta
+		var aiNameForVault string
+		db.QueryRow("SELECT value FROM profile WHERE key = 'ai_name'").Scan(&aiNameForVault)
+
+		var targetDir string
+		switch a.File {
+		case "USER-PROFILE.md":
+			targetDir = filepath.Join(vaultPath, "User")
+		default: // AGENT-IDENTITY.md, HOW-TO-TALK.md
+			if aiNameForVault == "" {
+				targetDir = vaultPath
+			} else {
+				targetDir = filepath.Join(vaultPath, aiNameForVault)
+			}
+		}
+
+		if err := os.MkdirAll(targetDir, 0755); err != nil {
 			toolError(id, "no se pudo crear el directorio vault: "+err.Error())
 			return
 		}
+		fpath := filepath.Join(targetDir, a.File)
 		if err := os.WriteFile(fpath, []byte(a.Content), 0644); err != nil {
 			toolError(id, "error escribiendo "+a.File+": "+err.Error())
 			return

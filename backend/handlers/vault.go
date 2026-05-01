@@ -17,33 +17,61 @@ const (
 	FileHowToTalk     = "HOW-TO-TALK.md"
 )
 
-// GenerateVault crea los tres archivos del vault a partir del perfil del usuario
-// y el arquetipo elegido. El directorio vaultPath se crea si no existe.
+// GenerateVault crea la estructura del vault a partir del perfil del usuario
+// y el arquetipo elegido.
 //
 // Estructura generada:
 //
 //	vault/
-//	├── AGENT-IDENTITY.md   ← [L1] constitución del agente + [L3] capacidades (CAG)
-//	├── USER-PROFILE.md     ← [L2] perfil profundo del usuario (CAG)
-//	└── HOW-TO-TALK.md      ← [L4] protocolo de relación (CAG)
+//	├── User/
+//	│   └── USER-PROFILE.md          ← [L2] perfil del usuario
+//	└── {agentName}/
+//	    ├── AGENT-IDENTITY.md        ← [L1] constitución + [L3] capacidades
+//	    ├── HOW-TO-TALK.md           ← [L4] protocolo de relación
+//	    ├── skills/README.md
+//	    ├── hooks/README.md
+//	    ├── subagents/README.md
+//	    └── plugins/README.md
 func GenerateVault(vaultPath string, aiName string, archetype Archetype, answers map[string]string) error {
-	if err := os.MkdirAll(vaultPath, 0755); err != nil {
-		return fmt.Errorf("no se pudo crear el directorio vault: %w", err)
+	agentDir := filepath.Join(vaultPath, aiName)
+	userDir  := filepath.Join(vaultPath, "User")
+
+	for _, dir := range []string{agentDir, userDir} {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("no se pudo crear directorio %s: %w", dir, err)
+		}
 	}
 
 	now := time.Now().Format("2006-01-02")
 
-	if err := writeFile(filepath.Join(vaultPath, FileAgentIdentity),
+	if err := writeFile(filepath.Join(agentDir, FileAgentIdentity),
 		buildAgentIdentity(aiName, archetype, now)); err != nil {
 		return err
 	}
-	if err := writeFile(filepath.Join(vaultPath, FileUserProfile),
+	if err := writeFile(filepath.Join(userDir, FileUserProfile),
 		buildUserProfile(aiName, answers, now)); err != nil {
 		return err
 	}
-	if err := writeFile(filepath.Join(vaultPath, FileHowToTalk),
+	if err := writeFile(filepath.Join(agentDir, FileHowToTalk),
 		buildHowToTalk(aiName, answers, now)); err != nil {
 		return err
+	}
+
+	// Crear carpetas de capas con placeholder hasta Fase 2
+	layers := []struct{ dir, content string }{
+		{"skills", fmt.Sprintf("# Skills de %s\n\nEsta carpeta se completa en la Fase 2 del onboarding.\nCada skill es un archivo `.md` que define una capacidad específica del agente.\n", aiName)},
+		{"hooks", fmt.Sprintf("# Hooks de %s\n\nEsta carpeta se completa en la Fase 2 del onboarding.\nCada hook es un comportamiento determinístico que se dispara en un evento específico.\n", aiName)},
+		{"subagents", fmt.Sprintf("# Subagents de %s\n\nEsta carpeta se completa en la Fase 2 del onboarding.\nCada subagent define un dominio de delegación para tareas específicas.\n", aiName)},
+		{"plugins", fmt.Sprintf("# Plugins de %s\n\nEsta carpeta se completa en la Fase 2 del onboarding.\nCada plugin es un bundle instalable de skills + hooks para un contexto específico.\n", aiName)},
+	}
+	for _, l := range layers {
+		dir := filepath.Join(agentDir, l.dir)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("no se pudo crear %s: %w", dir, err)
+		}
+		if err := writeFile(filepath.Join(dir, "README.md"), l.content); err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -53,9 +53,15 @@ ME/
 │       ├── QuestionScreen    → perfil usuario + protocolo de interacción
 │       └── SummaryScreen     → resumen final
 ├── vault/       Archivos CAG generados al completar onboarding
-│   ├── AGENT-IDENTITY.md    → quién es el agente (editable)
-│   ├── USER-PROFILE.md      → quién es el usuario (evoluciona)
-│   └── HOW-TO-TALK.md       → protocolo de relación
+│   ├── User/
+│   │   └── USER-PROFILE.md      → quién es el usuario (evoluciona)
+│   └── {agentName}/             → nombre elegido en onboarding
+│       ├── AGENT-IDENTITY.md    → quién es el agente (editable)
+│       ├── HOW-TO-TALK.md       → protocolo de relación
+│       ├── skills/README.md     → capacidades (Fase 2)
+│       ├── hooks/README.md      → triggers automáticos (Fase 2)
+│       ├── subagents/README.md  → delegación (Fase 2)
+│       └── plugins/README.md    → bundles de contexto (Fase 2)
 ├── mcp/         me-mcp.exe — servidor MCP para esta sesión
 ├── .env.example configuración documentada
 └── docs/        API.md, EVASPHERE.md, ONBOARDING.md
@@ -74,22 +80,36 @@ El vault es la síntesis destilada. Šà es el historial granular. Los dos junto
 
 ---
 
-## Vault — Archivos CAG (estructura en capas)
+## Vault — Estructura y capas CAG
 
-El vault usa una arquitectura de capas inspirada en el Agent Development Kit.
+El vault tiene dos mundos separados: el del usuario y el del agente.
 Cada archivo tiene secciones marcadas con `[L#]` que indican su capa y propósito.
 
-### AGENT-IDENTITY.md
+```
+vault/
+├── User/
+│   └── USER-PROFILE.md          ← [L2] pertenece al usuario
+└── {agentName}/
+    ├── AGENT-IDENTITY.md        ← [L1] + [L3] pertenece al agente
+    ├── HOW-TO-TALK.md           ← [L4] directriz del agente hacia el usuario
+    ├── skills/                  ← capacidades técnicas (Fase 2)
+    ├── hooks/                   ← triggers automáticos (Fase 2)
+    ├── subagents/               ← dominios de delegación (Fase 2)
+    └── plugins/                 ← bundles de contexto (Fase 2)
+```
+
+### vault/User/USER-PROFILE.md
+**[L2] PERFIL** — qué construye, por qué importa, meta a 90 días, fricción recurrente, modo de decisión, contexto de flow, superpoder, punto ciego, crecimiento actual.  
+**Evoluciona:** el agente lo actualiza a medida que aprende más sobre el usuario.
+
+### vault/{agentName}/AGENT-IDENTITY.md
 **[L1] CONSTITUCIÓN** — nombre, arquetipo, voz, valores core. Inmutable salvo decisión explícita.  
 **[L3] CAPACIDADES** — skills, hooks y subagents activos. Se completa en Fase 2 y evoluciona con el uso.  
 **Editable:** el usuario puede modificarlo en Obsidian. El agente lo actualiza con `update_vault`.
 
-### USER-PROFILE.md
-**[L2] PERFIL** — qué construye, por qué importa, meta a 90 días, fricción recurrente, modo de decisión, contexto de flow, superpoder, punto ciego, crecimiento actual.  
-**Evoluciona:** el agente lo actualiza a medida que aprende más sobre el usuario.
-
-### HOW-TO-TALK.md
+### vault/{agentName}/HOW-TO-TALK.md
 **[L4] PROTOCOLO DE RELACIÓN** — rol del agente, estilo de feedback, ancla de memoria permanente, zonas prohibidas.  
+Es una directriz del agente sobre cómo relacionarse con el usuario, no del usuario sobre el agente.  
 **Editable:** si algo no encaja, modifícalo directamente. El cambio se refleja en la próxima sesión.
 
 ---
