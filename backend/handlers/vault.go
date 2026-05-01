@@ -33,6 +33,11 @@ const (
 //	    ├── subagents/README.md
 //	    └── plugins/README.md
 func GenerateVault(vaultPath string, aiName string, archetype Archetype, answers map[string]string) error {
+	// Prevent path traversal via agent name
+	if strings.ContainsAny(aiName, `/\`) || strings.Contains(aiName, "..") || aiName == "" {
+		return fmt.Errorf("ai_name inválido: no puede contener '/', '\\' ni '..'")
+	}
+
 	agentDir := filepath.Join(vaultPath, aiName)
 	userDir  := filepath.Join(vaultPath, "User")
 

@@ -100,13 +100,14 @@ func (h *ProfileHandler) CompleteOnboarding(vaultPath string) http.HandlerFunc {
 		}
 
 		// --- 2. Plantar seeds del arquetipo en Šà (reflexion) ---
+		seedTags, _ := json.Marshal([]string{"arquetipo", "seed", req.Archetype})
 		for _, seed := range archetype.Seeds {
 			id := newUUID()
 			title := archetype.Name + " — seed"
 			if _, err := h.db.Exec(
 				`INSERT INTO memories (id, category, title, content, metadata, tags, created_at, updated_at)
-				 VALUES (?, 'reflexion', ?, ?, '{}', '["arquetipo","seed","'||?||'"]', ?, ?)`,
-				id, title, seed, req.Archetype, now, now,
+				 VALUES (?, 'reflexion', ?, ?, '{}', ?, ?, ?)`,
+				id, title, seed, string(seedTags), now, now,
 			); err != nil {
 				log.Printf("warning: failed to plant archetype seed %q: %v", title, err)
 			}
@@ -177,7 +178,10 @@ func (h *ProfileHandler) Get(w http.ResponseWriter, r *http.Request) {
 	entries := []models.ProfileEntry{}
 	for rows.Next() {
 		var e models.ProfileEntry
-		rows.Scan(&e.Key, &e.Value, &e.UpdatedAt)
+		if err := rows.Scan(&e.Key, &e.Value, &e.UpdatedAt); err != nil {
+			log.Printf("warning: failed to scan profile row: %v", err)
+			continue
+		}
 		entries = append(entries, e)
 	}
 

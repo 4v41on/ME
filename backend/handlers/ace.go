@@ -37,9 +37,13 @@ func (h *ACEHandler) Save(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Quality gate: reject very short or generic content
+	// Quality gate: reject very short or very long content
 	if len(req.Content) < 20 {
 		httpError(w, "content too short to be worth persisting (< 20 chars)", http.StatusBadRequest)
+		return
+	}
+	if len(req.Content) > 100000 {
+		httpError(w, "content too large (max 100 KB)", http.StatusBadRequest)
 		return
 	}
 

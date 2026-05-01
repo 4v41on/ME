@@ -41,7 +41,7 @@ func (h *GraphHandler) Get(w http.ResponseWriter, r *http.Request) {
 		LIMIT 200
 	`)
 	if err != nil {
-		http.Error(w, `{"error":"db error"}`, http.StatusInternalServerError)
+		httpError(w, "db error", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()

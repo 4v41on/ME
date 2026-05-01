@@ -77,8 +77,24 @@ func NewEventsHandler() *EventsHandler { return &EventsHandler{} }
 
 // InternalPublish maneja POST /api/internal/event.
 // Llamado por el servidor MCP (misma máquina) para publicar eventos de esfera.
-// El backend escucha solo en 127.0.0.1 — no requiere autenticación adicional.
+// Solo acepta conexiones de localhost como defensa en profundidad.
 func (h *EventsHandler) InternalPublish(w http.ResponseWriter, r *http.Request) {
+	// Defense-in-depth: rechazar si no viene de loopback
+	host := r.RemoteAddr
+	if idx := len(host) - 1; idx >= 0 {
+		// Strip port: RemoteAddr = "ip:port"
+		for i := len(host) - 1; i >= 0; i-- {
+			if host[i] == ':' {
+				host = host[:i]
+				break
+			}
+		}
+	}
+	if host != "127.0.0.1" && host != "::1" {
+		httpError(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
 	var evt SphereEvent
 	if err := json.NewDecoder(r.Body).Decode(&evt); err != nil {
 		httpError(w, "invalid json: "+err.Error(), http.StatusBadRequest)

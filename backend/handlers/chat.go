@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -117,14 +118,18 @@ func (h *ChatHandler) Chat(w http.ResponseWriter, r *http.Request) {
 
 	now := time.Now().UTC().Format(time.RFC3339)
 
-	h.db.Exec(
+	if _, err := h.db.Exec(
 		"INSERT INTO chat_history (id, role, content, created_at) VALUES (?, ?, ?, ?)",
 		uuid.New().String(), "user", req.Message, now,
-	)
-	h.db.Exec(
+	); err != nil {
+		log.Printf("warning: failed to save user message to chat_history: %v", err)
+	}
+	if _, err := h.db.Exec(
 		"INSERT INTO chat_history (id, role, content, created_at) VALUES (?, ?, ?, ?)",
 		uuid.New().String(), "assistant", reply, now,
-	)
+	); err != nil {
+		log.Printf("warning: failed to save assistant reply to chat_history: %v", err)
+	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": reply})
 }
@@ -143,7 +148,10 @@ func (h *ChatHandler) History(w http.ResponseWriter, r *http.Request) {
 	var msgs []models.ChatMessage
 	for rows.Next() {
 		var m models.ChatMessage
-		rows.Scan(&m.ID, &m.Role, &m.Content, &m.CreatedAt)
+		if err := rows.Scan(&m.ID, &m.Role, &m.Content, &m.CreatedAt); err != nil {
+			log.Printf("warning: failed to scan chat_history row: %v", err)
+			continue
+		}
 		msgs = append(msgs, m)
 	}
 
@@ -172,17 +180,17 @@ func (h *ChatHandler) buildSystemPrompt() string {
 	if work, ok := profile["work"]; ok && work != "" {
 		sb.WriteString(fmt.Sprintf("El usuario trabaja en: %s\n", work))
 	}
-	if goal, ok := profile["goal_3m"]; ok && goal != "" {
-		sb.WriteString(fmt.Sprintf("Su meta en 3 meses: %s\n", goal))
+	if goal, ok := profile["goal_90d"]; ok && goal != "" {
+		sb.WriteString(fmt.Sprintf("Su meta en 90 días: %s\n", goal))
 	}
-	if obstacle, ok := profile["main_obstacle"]; ok && obstacle != "" {
-		sb.WriteString(fmt.Sprintf("Su obstáculo principal ahora: %s\n", obstacle))
+	if friction, ok := profile["friction"]; ok && friction != "" {
+		sb.WriteString(fmt.Sprintf("Su fricción recurrente: %s\n", friction))
 	}
-	if style, ok := profile["work_style"]; ok && style != "" {
-		sb.WriteString(fmt.Sprintf("Cómo trabaja mejor: %s\n", style))
+	if style, ok := profile["cognitive_style"]; ok && style != "" {
+		sb.WriteString(fmt.Sprintf("Cómo toma decisiones: %s\n", style))
 	}
-	if comm, ok := profile["communication_style"]; ok && comm != "" {
-		sb.WriteString(fmt.Sprintf("Cómo prefiere que le hablen cuando se desvía: %s\n", comm))
+	if flow, ok := profile["flow_context"]; ok && flow != "" {
+		sb.WriteString(fmt.Sprintf("Su contexto de flow: %s\n", flow))
 	}
 
 	sb.WriteString("\nResponde de forma directa y concisa.")
@@ -198,7 +206,10 @@ func (h *ChatHandler) loadProfile() map[string]string {
 	profile := make(map[string]string)
 	for rows.Next() {
 		var k, v string
-		rows.Scan(&k, &v)
+		if err := rows.Scan(&k, &v); err != nil {
+			log.Printf("warning: failed to scan profile row: %v", err)
+			continue
+		}
 		profile[k] = v
 	}
 	return profile
@@ -216,7 +227,10 @@ func (h *ChatHandler) loadHistory(n int) []models.ChatMessage {
 	var msgs []models.ChatMessage
 	for rows.Next() {
 		var m models.ChatMessage
-		rows.Scan(&m.ID, &m.Role, &m.Content, &m.CreatedAt)
+		if err := rows.Scan(&m.ID, &m.Role, &m.Content, &m.CreatedAt); err != nil {
+			log.Printf("warning: failed to scan chat_history row: %v", err)
+			continue
+		}
 		msgs = append(msgs, m)
 	}
 	for i, j := 0, len(msgs)-1; i < j; i, j = i+1, j-1 {

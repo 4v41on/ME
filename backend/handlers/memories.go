@@ -212,6 +212,10 @@ func (h *MemoryHandler) Search(w http.ResponseWriter, r *http.Request) {
 		httpError(w, "missing query parameter 'q'", http.StatusBadRequest)
 		return
 	}
+	if len(q) > 1000 {
+		httpError(w, "query too long (max 1000 chars)", http.StatusBadRequest)
+		return
+	}
 
 	// FTS5 query: strip special chars and boolean operators to prevent injection.
 	// We strip both upper and lower variants without changing original case.
