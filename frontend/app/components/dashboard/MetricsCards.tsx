@@ -105,6 +105,61 @@ function MetricCard({
   );
 }
 
+// ─── Breakdown por categoría ──────────────────────────────────────────────────
+
+const CATEGORY_ACCENT: Record<string, string> = {
+  tarea:        "#a855f7",
+  nota:         "#52525b",
+  recordatorio: "#00d4ff",
+  estado_animo: "#a855f7",
+  reflexion:    "#52525b",
+  logro:        "#a855f7",
+  aprendizaje:  "#00d4ff",
+  pregunta:     "#71717a",
+  perfil:       "#a855f7",
+};
+
+function CategoryBreakdown({ por_categoria }: { por_categoria: Record<string, number> }) {
+  const entries = Object.entries(por_categoria).sort((a, b) => b[1] - a[1]);
+  if (!entries.length) return null;
+  const max = entries[0][1];
+
+  return (
+    <div className="flex flex-col gap-2 mt-4 pt-4" style={{ borderTop: "1px solid #18181b" }}>
+      <span className="font-mono uppercase tracking-widest" style={{ fontSize: "8px", color: "#3f3f46" }}>
+        por categoría
+      </span>
+      <div className="flex flex-col gap-2">
+        {entries.map(([cat, count]) => {
+          const accent = CATEGORY_ACCENT[cat] ?? "#52525b";
+          const pct = max > 0 ? (count / max) * 100 : 0;
+          return (
+            <div key={cat} className="flex flex-col gap-0.5">
+              <div className="flex items-center justify-between">
+                <span className="font-mono uppercase tracking-widest" style={{ fontSize: "8px", color: accent + "bb" }}>
+                  {cat}
+                </span>
+                <span className="font-mono" style={{ fontSize: "8px", color: "#3f3f46" }}>{count}</span>
+              </div>
+              <div style={{ height: "2px", background: "#18181b", width: "100%" }}>
+                <div
+                  style={{
+                    height: "100%",
+                    width: `${pct}%`,
+                    background: accent,
+                    opacity: 0.7,
+                    transition: "width 0.6s ease",
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Grid de métricas ─────────────────────────────────────────────────────────
 export function MetricsCards() {
   const { stats, loading } = useDashboard();
@@ -135,10 +190,13 @@ export function MetricsCards() {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3">
-      {cards.map((c, i) => (
-        <MetricCard key={c.label} {...c} delay={i * 70} />
-      ))}
+    <div className="flex flex-col">
+      <div className="grid grid-cols-2 gap-3">
+        {cards.map((c, i) => (
+          <MetricCard key={c.label} {...c} delay={i * 70} />
+        ))}
+      </div>
+      {stats?.por_categoria && <CategoryBreakdown por_categoria={stats.por_categoria} />}
     </div>
   );
 }

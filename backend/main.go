@@ -26,6 +26,7 @@ func main() {
 	// Wire handlers
 	memories := handlers.NewMemoryHandler(database)
 	dashboard := handlers.NewDashboardHandler(database)
+	graph    := handlers.NewGraphHandler(database)
 	chat := handlers.NewChatHandler(database, cfg.OllamaURL, cfg.OllamaModel)
 	profile := handlers.NewProfileHandler(database)
 	skills := handlers.NewSkillsHandler(database)
@@ -68,6 +69,15 @@ func main() {
 			return
 		}
 		memories.Search(w, r)
+	})
+
+	// Memory graph
+	mux.HandleFunc("/api/memories/graph", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		graph.Get(w, r)
 	})
 
 	// Dashboard

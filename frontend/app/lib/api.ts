@@ -195,6 +195,32 @@ export async function resetProfile(): Promise<void> {
   if (!res.ok) throw new Error(await res.text());
 }
 
+// --- Memory Graph ---
+
+export interface GraphNode {
+  id: string;
+  label: string;
+  category: string;
+  date: string;
+}
+
+export interface GraphLink {
+  source: string;
+  target: string;
+  tag: string;
+}
+
+export interface GraphData {
+  nodes: GraphNode[];
+  links: GraphLink[];
+}
+
+export async function getMemoryGraph(): Promise<GraphData> {
+  const res = await fetch(`${BASE}/api/memories/graph`);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 // --- ACE ---
 
 export async function saveContext(content: string, title?: string): Promise<void> {
