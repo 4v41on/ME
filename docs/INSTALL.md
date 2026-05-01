@@ -105,7 +105,7 @@ make build-mcp
 
 > **¿Por qué desde `vault/`?**
 > El agente carga `CLAUDE.md` y `ME-Init.md` como contexto estático (CAG) al iniciar.
-> Si abrís opencode desde otra carpeta, esos archivos no se cargan automáticamente y el agente empieza sin contexto — el RAG funciona pero el CAG no.
+> Si abres opencode desde otra carpeta, esos archivos no se cargan automáticamente y el agente empieza sin contexto — el RAG funciona pero el CAG no.
 > Abrirlo desde `vault/` es lo que activa la memoria completa desde el primer mensaje.
 
 ---
@@ -117,18 +117,18 @@ El onboarding genera tres archivos en `ME_VAULT_PATH`:
 - `USER-PROFILE.md` — quién eres tú
 - `HOW-TO-TALK.md` — cómo se relacionan
 
-**Si usás Obsidian**, la forma más limpia es apuntar `ME_VAULT_PATH` directamente a tu vault (o a una subcarpeta dentro de él) **antes de correr el onboarding**. Los archivos se generan ahí y Obsidian los ve sin pasos extra.
+**Si usas Obsidian**, la forma más limpia es apuntar `ME_VAULT_PATH` directamente a tu vault (o a una subcarpeta dentro de él) **antes de correr el onboarding**. Los archivos se generan ahí y Obsidian los ve sin pasos extra.
 
 ```bash
-# En .env — apuntá a donde quieras que vivan los archivos del agente
+# En .env — apunta a donde quieras que vivan los archivos del agente
 ME_VAULT_PATH=C:/Users/TuUsuario/Documents/Obsidian Vault/ME
 ```
 
-Con esto podés agregar tareas, métricas y notas al mismo vault, y el agente las leerá como contexto en cada sesión.
+Con esto puedes agregar tareas, métricas y notas al mismo vault, y el agente las leerá como contexto en cada sesión.
 
-**Si no usás Obsidian**, dejá el default `../vault` — el agente lee los `.md` directo desde disco sin necesitar Obsidian.
+**Si no usas Obsidian**, deja el default `../vault` — el agente lee los `.md` directo desde disco sin necesitar Obsidian.
 
-> **Abrí opencode siempre desde `ME_VAULT_PATH`** — ahí viven `CLAUDE.md` y `ME-Init.md`, que el agente carga como contexto estático (CAG) al iniciar.
+> **Abre opencode siempre desde `ME_VAULT_PATH`** — ahí viven `CLAUDE.md` y `ME-Init.md`, que el agente carga como contexto estático (CAG) al iniciar.
 
 ---
 
@@ -167,17 +167,17 @@ Contiene:
 - Tus memorias (lo que guardas con `save_memory`)
 - El historial de chat (conversaciones con el agente)
 
-**Nadie más tiene acceso a este archivo.** Si desinstalás el sistema, borrás esa carpeta y no queda nada.
+**Nadie más tiene acceso a este archivo.** Si desinstalar el sistema, borra esa carpeta y no queda nada.
 
 ### Conexiones externas
 
 Por defecto, ME **no hace ninguna llamada a internet**. El sistema funciona completamente offline.
 
-La única excepción es si configurás Ollama con un modelo externo o si el LLM que usás (opencode / Claude Code) hace sus propias llamadas a la API de Anthropic — pero eso es la herramienta de IA que ya estás usando, no ME.
+La única excepción es si configuras Ollama con un modelo externo o si el LLM que usas (opencode / Claude Code) hace sus propias llamadas a la API de Anthropic — pero eso es la herramienta de IA que ya estás usando, no ME.
 
 ### Código abierto
 
-El código fuente está en GitHub. Podés auditarlo entero antes de instalarlo.
+El código fuente está en GitHub. Puedes auditarlo entero antes de instalarlo.
 
 ---
 

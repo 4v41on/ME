@@ -125,7 +125,7 @@ Al terminar, `vault/` aparece con la siguiente estructura:
 ```
 vault/
 ├── User/
-│   └── USER-PROFILE.md       ← quién sos vos (evoluciona con el uso)
+│   └── USER-PROFILE.md       ← quién eres tú (evoluciona con el uso)
 └── {nombre del agente}/
     ├── AGENT-IDENTITY.md     ← quién es el agente (editable)
     ├── HOW-TO-TALK.md        ← protocolo de relación
@@ -137,11 +137,11 @@ vault/
 
 Es el contexto estático que el agente lee en cada sesión sin que tengas que repetirle nada.
 
-**Si usás Obsidian:** apuntá `ME_VAULT_PATH` en `.env` a tu vault de Obsidian (o a una subcarpeta dentro de él) antes de correr el onboarding. Los archivos se generan directamente ahí y podés editarlos, expandirlos con tareas, métricas y notas, y el agente los lee todo junto.
+**Si usas Obsidian:** apunta `ME_VAULT_PATH` en `.env` a tu vault de Obsidian (o a una subcarpeta dentro de él) antes de correr el onboarding. Los archivos se generan directamente ahí y puedes editarlos, expandirlos con tareas, métricas y notas, y el agente los lee todo junto.
 
-**Si no usás Obsidian:** el vault se genera en `~/.me/vault/` por default (`C:\Users\TuUsuario\.me\vault\` en Windows). Son archivos `.md` — cualquier editor de texto los abre. El sistema funciona igual.
+**Si no usas Obsidian:** el vault se genera en `~/.me/vault/` por default (`C:\Users\TuUsuario\.me\vault\` en Windows). Son archivos `.md` — cualquier editor de texto los abre. El sistema funciona igual.
 
-> **Abrí opencode desde la carpeta `ME_VAULT_PATH`** — así carga `CLAUDE.md` y `ME-Init.md` como contexto estático automáticamente.
+> **Abre opencode desde la carpeta `ME_VAULT_PATH`** — así carga `CLAUDE.md` y `ME-Init.md` como contexto estático automáticamente.
 
 ---
 
@@ -166,7 +166,7 @@ Hay un template en `mcp.json.example` en la raíz del repo. Copia los valores y 
 }
 ```
 
-`ME_DB_PATH` y `ME_VAULT_PATH` son opcionales — el sistema usa `~/.me/` por default. Solo configúralos si querés rutas personalizadas (ej. apuntar el vault directo a Obsidian).
+`ME_DB_PATH` y `ME_VAULT_PATH` son opcionales — el sistema usa `~/.me/` por default. Solo configúralos si quieres rutas personalizadas (ej. apuntar el vault directo a Obsidian).
 
 **Claude Code** — crea `.mcp.json` en tu carpeta de trabajo:
 
@@ -183,7 +183,7 @@ Hay un template en `mcp.json.example` en la raíz del repo. Copia los valores y 
 }
 ```
 
-**Abrí opencode o Claude Code desde la carpeta `ME/vault/`**, no desde la raíz del repo.
+**Abre opencode o Claude Code desde la carpeta `ME/vault/`**, no desde la raíz del repo.
 El agente usa `CLAUDE.md` y `ME-Init.md` como contexto estático (CAG) al iniciar — abrirlos desde `vault/` garantiza que los lea automáticamente y el RAG funcione desde el primer mensaje.
 
 En la primera sesión escribe `abrakadabra`.
@@ -227,13 +227,13 @@ Todo corre en tu máquina. No hay servidores de ME en la nube, no hay cuenta, no
 | `8082` | Backend — API REST | Solo tu PC (localhost) |
 | `3000` | Frontend — la interfaz | Solo tu PC (localhost) |
 
-Ambos escuchan en `127.0.0.1`. Eso significa que ningún otro dispositivo en tu red puede conectarse — solo vos, desde tu propio browser.
+Ambos escuchan en `127.0.0.1`. Eso significa que ningún otro dispositivo en tu red puede conectarse — solo tú, desde tu propio browser.
 
-**Si Windows Firewall te pregunta** al ejecutar el backend: podés bloquear el acceso a redes públicas y privadas sin problema. El sistema no necesita internet para funcionar.
+**Si Windows Firewall te pregunta** al ejecutar el backend: puedes bloquear el acceso a redes públicas y privadas sin problema. El sistema no necesita internet para funcionar.
 
-**Dónde viven tus datos:** en `~/.me/me.db` (`C:\Users\TuUsuario\.me\me.db` en Windows). Tus memorias, tu perfil, tu historial de chat — todo ahí, en tu máquina, siempre en el mismo lugar sin importar desde dónde arranques el servidor. Para desinstalar, borrás esa carpeta y el repo.
+**Dónde viven tus datos:** en `~/.me/me.db` (`C:\Users\TuUsuario\.me\me.db` en Windows). Tus memorias, tu perfil, tu historial de chat — todo ahí, en tu máquina, siempre en el mismo lugar sin importar desde dónde arranques el servidor. Para desinstalar, borra esa carpeta y el repo.
 
-**Conexiones externas:** ninguna por defecto. ME es offline. Si configurás Ollama, también corre en tu máquina. La única red que usa el sistema es localhost.
+**Conexiones externas:** ninguna por defecto. ME es offline. Si configuras Ollama, también corre en tu máquina. La única red que usa el sistema es localhost.
 
 ---
 
@@ -289,7 +289,7 @@ Remove-Item "$env:USERPROFILE\.me\me.db" -ErrorAction SilentlyContinue
 |----------|---------|-------------|
 | `ME_PORT` | `8082` | Puerto del backend |
 | `ME_DB_PATH` | `~/.me/me.db` | Base de datos SQLite — Šà 𒊮 |
-| `ME_VAULT_PATH` | `~/.me/vault` | Directorio del vault CAG — apuntá a tu vault de Obsidian si usás uno |
+| `ME_VAULT_PATH` | `~/.me/vault` | Directorio del vault CAG — apunta a tu vault de Obsidian si usas uno |
 | `ME_INIT_PATH` | `./ME-Init.md` | Init file para el MCP |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8082` | URL del backend desde el browser |
 | `OLLAMA_URL` | vacío | URL de Ollama — vacío = deshabilitado |
