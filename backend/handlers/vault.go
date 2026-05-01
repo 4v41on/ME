@@ -9,7 +9,7 @@ import (
 )
 
 // VaultFiles son los tres archivos CAG generados al completar el onboarding.
-// El usuario los copia a su Obsidian (o los linkea).
+// El usuario los copia a su Obsidian (o los linkea via ME_VAULT_PATH).
 // Son la capa CAG: siempre presentes en el contexto de cada sesión.
 const (
 	FileAgentIdentity = "AGENT-IDENTITY.md"
@@ -23,9 +23,9 @@ const (
 // Estructura generada:
 //
 //	vault/
-//	├── AGENT-IDENTITY.md   ← quién es el agente (CAG)
-//	├── USER-PROFILE.md     ← quién es el usuario (CAG)
-//	└── HOW-TO-TALK.md      ← protocolo de relación (CAG)
+//	├── AGENT-IDENTITY.md   ← [L1] constitución del agente + [L3] capacidades (CAG)
+//	├── USER-PROFILE.md     ← [L2] perfil profundo del usuario (CAG)
+//	└── HOW-TO-TALK.md      ← [L4] protocolo de relación (CAG)
 func GenerateVault(vaultPath string, aiName string, archetype Archetype, answers map[string]string) error {
 	if err := os.MkdirAll(vaultPath, 0755); err != nil {
 		return fmt.Errorf("no se pudo crear el directorio vault: %w", err)
@@ -50,8 +50,9 @@ func GenerateVault(vaultPath string, aiName string, archetype Archetype, answers
 }
 
 // buildAgentIdentity genera AGENT-IDENTITY.md.
-// Define quién es el agente: nombre, arquetipo, voz, rasgos core.
-// El usuario puede editar este archivo directamente en Obsidian.
+//
+// [L1] CONSTITUCIÓN — nombre, arquetipo, voz, valores core. Inmutable.
+// [L3] CAPACIDADES  — placeholder; se completa en Fase 2 con skills/hooks/subagents reales.
 func buildAgentIdentity(aiName string, a Archetype, date string) string {
 	seeds := make([]string, len(a.Seeds))
 	for i, s := range a.Seeds {
@@ -67,27 +68,49 @@ generado: %s
 
 # %s
 
+---
+
+## [L1] CONSTITUCIÓN — inmutable
+
+**Nombre:** %s
 **Arquetipo:** %s
 
-## Quién soy
+### Quién soy
 
 %s
 
-## Cómo pienso
+### Cómo pienso
 
 %s
 
-## Valores core
+### Valores core
 
 %s
 
 ---
 
-> Este archivo define la personalidad base de %s.
+## [L3] CAPACIDADES
+
+> Las skills, hooks y subagents de %s se configuran en la Fase 2 del onboarding.
+> Esta sección se actualiza automáticamente al completar los formularios de configuración.
+
+### Skills activas
+*(pendiente — Fase 2)*
+
+### Hooks configurados
+*(pendiente — Fase 2)*
+
+### Subagents disponibles
+*(pendiente — Fase 2)*
+
+---
+
+> [!note] Este archivo define la identidad base de %s.
 > Es completamente editable — modifícalo para moldear cómo piensa y cómo habla.
-> %s lo leerá al inicio de cada sesión como contexto estático (CAG).
+> %s lo leerá al inicio de cada sesión como contexto estático (CAG Layer 1).
 `,
 		aiName, a.Name, date,
+		aiName,
 		aiName,
 		a.Name,
 		a.Brief,
@@ -95,12 +118,14 @@ generado: %s
 		strings.Join(seeds, "\n"),
 		aiName,
 		aiName,
+		aiName,
 	)
 }
 
 // buildUserProfile genera USER-PROFILE.md.
-// Define quién es el usuario: trabajo, metas, cómo funciona, fortalezas.
-// Se actualiza a medida que el agente aprende más sobre el usuario.
+//
+// [L2] PERFIL — quién es el usuario: qué construye, cómo piensa, quién es.
+// Alimentado por las 9 preguntas del Bloque A del onboarding.
 func buildUserProfile(aiName string, a map[string]string, date string) string {
 	get := func(key string) string {
 		if v := a[key]; v != "" {
@@ -116,61 +141,62 @@ generado: %s
 
 # Perfil del usuario
 
-## Qué hace
+---
 
-**Trabajo / proyecto:** %s
+## [L2] PERFIL
 
-**Objetivo próximos 3 meses:** %s
+### Qué construye
 
-**Obstáculo más urgente ahora:** %s
+**Trabajo / proyecto / rol:** %s
 
-## Cómo funciona
+**Por qué importa:** %s
 
-**Sistema de organización:** %s
+### A dónde va
 
-**Qué se le escapa:** %s
+**Meta en 90 días:** %s
 
-**Tiempo real vs fuegos:** %s
+**Fricción recurrente:** %s
 
-**Contexto ideal de trabajo:** %s
+### Cómo piensa
 
-## Fortalezas y puntos ciegos
+**Modo de decisión:** %s
 
-%s
+**Contexto de flow:** %s
 
-## Crecimiento
+### Quién es
 
-**Hábito pendiente:** %s
+**Superpoder:** %s
 
-**Área más descuidada:** %s
+**Punto ciego:** %s
 
-**Aprendiendo ahora:** %s
+**Crecimiento ahora:** %s
 
 ---
 
-> Este archivo es la memoria consciente del usuario que %s lee en cada sesión.
-> Se actualiza a medida que crece la interacción.
+> [!note] Este archivo es la memoria consciente del usuario que %s lee en cada sesión.
+> Se actualiza a medida que crece la interacción via Šà y update_vault.
 > Los detalles granulares viven en Šà (RAG) — aquí está la síntesis.
+> CAG Layer 2.
 `,
 		date,
 		get("work"),
-		get("goal_3m"),
-		get("main_obstacle"),
-		get("organization_system"),
-		get("what_slips"),
-		get("real_work_ratio"),
-		get("work_style"),
-		get("strength_blindspot"),
-		get("failed_habit"),
-		get("neglected_area"),
-		get("learning"),
+		get("purpose"),
+		get("goal_90d"),
+		get("friction"),
+		get("cognitive_style"),
+		get("flow_context"),
+		get("superpower"),
+		get("blind_spot"),
+		get("growth_edge"),
 		aiName,
 	)
 }
 
 // buildHowToTalk genera HOW-TO-TALK.md.
-// Define el protocolo de relación entre el agente y el usuario.
-// Responde: ¿qué tipo de ayuda quiere? ¿cómo quiere que le digan las cosas?
+//
+// [L4] PROTOCOLO DE RELACIÓN — cómo trabajan juntos, qué quiere el usuario del agente,
+// límites explícitos y ancla de memoria permanente.
+// Alimentado por las 4 preguntas del Bloque B del onboarding.
 func buildHowToTalk(aiName string, a map[string]string, date string) string {
 	get := func(key string) string {
 		if v := a[key]; v != "" {
@@ -185,25 +211,52 @@ agente: %s
 generado: %s
 ---
 
-# Cómo nos relacionamos
-
-## Qué tipo de ayuda es más útil
-
-%s
-
-## Cómo decirle cuando se desvía de sus metas
-
-%s
+# Cómo trabajamos
 
 ---
 
-> Este protocolo define cómo %s se comunica con el usuario.
-> Es editable — si el estilo no encaja, modifícalo aquí y el cambio
-> se refleja en la próxima sesión.
+## [L4] PROTOCOLO DE RELACIÓN
+
+### Rol del agente
+
+Lo que el usuario quiere que %s haga y él no hace bien solo:
+
+%s
+
+### Estilo de feedback
+
+Cuando el usuario toma una mala decisión, %s debe:
+
+%s
+
+### Ancla de memoria permanente
+
+Lo que %s nunca debe olvidar, sin importar cuánto tiempo pase:
+
+> %s
+
+### Zonas prohibidas
+
+Lo que %s no debe hacer nunca, sin importar el contexto:
+
+> %s
+
+---
+
+> [!note] Este protocolo define cómo %s se relaciona con el usuario.
+> Es editable — si algo no encaja, modifícalo directamente aquí.
+> El cambio se refleja en la próxima sesión.
+> CAG Layer 4.
 `,
 		aiName, date,
-		get("help_type"),
-		get("communication_style"),
+		aiName,
+		get("agent_role"),
+		aiName,
+		get("feedback_style"),
+		aiName,
+		get("memory_core"),
+		aiName,
+		get("limits"),
 		aiName,
 	)
 }

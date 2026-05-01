@@ -16,8 +16,8 @@ ME es un ecosistema EVA instalable: backend Go + SQLite/FTS5 + frontend Next.js 
 
 **Backend:** `http://localhost:8082`  
 **Frontend:** `http://localhost:3000`  
-**DB:** `ME/backend/me.db` (relativo al repo clonado)  
-**Vault:** `ME/vault/` — archivos CAG generados por el onboarding
+**DB:** `~/.me/me.db` — ruta absoluta, independiente del directorio de trabajo  
+**Vault:** `~/.me/vault/` por default — o `ME_VAULT_PATH` si apunta a Obsidian
 
 ---
 
@@ -74,19 +74,23 @@ El vault es la síntesis destilada. Šà es el historial granular. Los dos junto
 
 ---
 
-## Vault — Archivos CAG
+## Vault — Archivos CAG (estructura en capas)
+
+El vault usa una arquitectura de capas inspirada en el Agent Development Kit.
+Cada archivo tiene secciones marcadas con `[L#]` que indican su capa y propósito.
 
 ### AGENT-IDENTITY.md
-Define quién es el agente: nombre, arquetipo, voz, rasgos core.  
-**Editable:** el usuario puede modificarlo en Obsidian. El agente puede actualizarlo con `update_vault`.
+**[L1] CONSTITUCIÓN** — nombre, arquetipo, voz, valores core. Inmutable salvo decisión explícita.  
+**[L3] CAPACIDADES** — skills, hooks y subagents activos. Se completa en Fase 2 y evoluciona con el uso.  
+**Editable:** el usuario puede modificarlo en Obsidian. El agente lo actualiza con `update_vault`.
 
 ### USER-PROFILE.md
-Define quién es el usuario: trabajo, metas, cómo funciona, fortalezas, puntos ciegos.  
+**[L2] PERFIL** — qué construye, por qué importa, meta a 90 días, fricción recurrente, modo de decisión, contexto de flow, superpoder, punto ciego, crecimiento actual.  
 **Evoluciona:** el agente lo actualiza a medida que aprende más sobre el usuario.
 
 ### HOW-TO-TALK.md
-Define el protocolo de relación: qué tipo de ayuda quiere el usuario y cómo quiere que le hablen.  
-**Editable:** si el estilo no encaja, el usuario o el agente pueden modificarlo.
+**[L4] PROTOCOLO DE RELACIÓN** — rol del agente, estilo de feedback, ancla de memoria permanente, zonas prohibidas.  
+**Editable:** si algo no encaja, modifícalo directamente. El cambio se refleja en la próxima sesión.
 
 ---
 
@@ -127,22 +131,39 @@ Genera: vault/ + seeds en Šà + perfil en SQLite.
 Detectado por: `phase1_complete = true` en el perfil.
 
 ### Fase 2 (opencode, con LLM) — ocurre UNA sola vez
-Al primer `abrakadabra` con `phase2_complete = false`, el agente:
-1. Se presenta con la voz del arquetipo elegido
-2. Ya sabe el perfil base (lo leyó del vault)
-3. Profundiza lo que el formulario no captura
-4. Al terminar: actualiza vault/ con `update_vault` + llama `complete_phase2`
 
-Después de Fase 2: `abrakadabra` solo carga contexto, no hay más onboarding.
+Al primer `abrakadabra` con `phase2_complete = false`, el agente lanza **4 formularios estructurados** en secuencia. No es conversación libre — es un proceso de configuración que termina generando capacidades reales.
+
+**FORMULARIO 1 — Stack técnico**
+Pregunta por herramientas, lenguajes, frameworks, APIs que usa el usuario.
+→ Resultado: genera archivos de skills en `vault/skills/` adaptados a su stack real.
+
+**FORMULARIO 2 — Flujos recurrentes**
+Pregunta qué hace el usuario de forma repetida, qué tareas consumen más tiempo.
+→ Resultado: genera definiciones de hooks en `vault/hooks/` para sus triggers reales.
+
+**FORMULARIO 3 — Delegación**
+Pregunta qué tareas delegaría el usuario si pudiera, qué cosas evita hacer.
+→ Resultado: genera definiciones de subagents en `vault/subagents/` para sus patrones de delegación.
+
+**FORMULARIO 4 — Patrones de contexto**
+Pregunta cuándo necesita activarse el agente, qué eventos o situaciones importan.
+→ Resultado: si hay patrones empaquetables, genera `vault/plugins/`.
+
+Al completar los 4 formularios:
+- `update_vault` actualiza la sección `[L3] CAPACIDADES` de AGENT-IDENTITY.md con lo generado
+- `complete_phase2` marca la fase como completada
+
+Después de Fase 2: `abrakadabra` solo carga contexto. No hay más onboarding.
 
 ---
 
 ## Ciclo de vida de la personalidad
 
 ```
-Fase 1  → huevo (vault template + seeds Šà)
-Fase 2  → voz real (vault reescrito por LLM + RAG enriquecido)
-Sesiones → el agente crece (Šà acumula, vault evoluciona)
+Fase 1  → huevo     (vault en capas [L1/L2/L4] + seeds Šà)
+Fase 2  → voz real  ([L3] CAPACIDADES generadas + skills/hooks/subagents configurados)
+Sesiones → crece    (Šà acumula memoria, vault evoluciona con update_vault)
 ```
 
 ---
